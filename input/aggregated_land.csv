@@ -1,0 +1,29 @@
+landtype,agg_land
+biomassGrass,biomass
+biomassTree,biomass
+Corn,crops
+FiberCrop,crops
+FodderGrass,crops
+FodderHerb,crops
+Forest,forest
+Grassland,grassland
+MiscCrop,crops
+OilCrop,crops
+OtherArableLand,otherarable
+OtherGrain,crops
+PalmFruit,crops
+Pasture,pasture
+Rice,crops
+RockIceDesert,other natural
+RootTuber,crops
+Shrubland,shrubland
+SugarCrop,crops
+UnmanagedForest,forest
+UnmanagedPasture,pasture
+UrbanLand,urban
+Wheat,crops
+Tundra,other natural
+ProtectedGrassland,grassland
+ProtectedShrubland,shrubland
+ProtectedUnmanagedForest,forest
+ProtectedUnmanagedPasture,pasture

@@ -1,0 +1,127 @@
+sector,type,rewrite
+2W and 3W,enduse,2W and 3W
+agricultural energy use,enduse,agricultural energy use
+airCO2,enduse,CO2 removal
+alumina,enduse,alumina
+backup_electricity,transformation,electricity
+Beef,enduse,Beef
+biomass,primary,biomass
+Bus,enduse,Bus
+Car,enduse,Car
+cement,enduse,cement
+chemical energy use,enduse,chemical energy use
+chemical feedstocks,enduse,chemical feedstocks
+coal,primary,coal
+comm cooling,enduse,comm cooling
+comm heating,enduse,comm heating
+comm others,enduse,comm others
+construction energy use,enduse,construction energy use
+Corn,enduse,Corn
+crude oil,primary,crude oil
+csp_backup,transformation,electricity
+Dairy,enduse,Dairy
+delivered biomass,eliminate,delivered biomass
+delivered gas,eliminate,delivered gas
+district heat,transformation,district heat
+Domestic Aviation,enduse,Domestic Aviation
+Domestic Ship,enduse,Domestic Ship
+elec_biomass (conv CCS),transformation,electricity
+elec_biomass (conv),transformation,electricity
+elec_biomass (IGCC CCS),transformation,electricity
+elec_biomass (IGCC),transformation,electricity
+elec_coal (conv pul CCS),transformation,electricity
+elec_coal (conv pul),transformation,electricity
+elec_coal (IGCC CCS),transformation,electricity
+elec_coal (IGCC),transformation,electricity
+elec_gas (CC CCS),transformation,electricity
+elec_gas (CC),transformation,electricity
+elec_gas (steam/CT),transformation,electricity
+elec_refined liquids (CC CCS),transformation,electricity
+elec_refined liquids (CC),transformation,electricity
+elec_refined liquids (steam/CT),transformation,electricity
+electricity,transformation,electricity
+electricity_net_ownuse,transformation,electricity
+FiberCrop,enduse,FiberCrop
+FodderGrass,enduse,FodderGrass
+FodderHerb,enduse,FodderHerb
+Freight Rail,enduse,Freight Rail
+gas pipeline,transformation,gas processing
+gas processing,transformation,gas processing
+H2 central production,transformation,H2 enduse
+H2 forecourt production,transformation,H2 enduse
+Heavy truck,enduse,Heavy truck
+industrial energy use,enduse,industrial energy use
+industrial feedstocks,enduse,industrial feedstocks
+industrial processes,enduse,industrial processes
+International Aviation,enduse,International Aviation
+International Ship,enduse,International Ship
+iron and steel,enduse,iron and steel
+Large Car and Truck,enduse,Large Car and Truck
+Light truck,enduse,Light truck
+Medium truck,enduse,Medium truck
+Mini Car,enduse,Mini Car
+mining energy use,enduse,mining energy use
+MiscCrop,enduse,MiscCrop
+N fertilizer,enduse,N fertilizer
+natural gas,primary,natural gas
+OilCrop,enduse,OilCrop
+OtherGrain,enduse,OtherGrain
+PalmFruit,enduse,PalmFruit
+Passenger Rail,enduse,Passenger Rail
+Pork,enduse,Pork
+Poultry,enduse,Poultry
+process heat cement,enduse,cement
+process heat dac,enduse,ces
+refining,transformation,refining
+resid cooling,enduse,resid cooling
+resid heating,enduse,resid heating
+resid others,enduse,resid others
+Rice,enduse,Rice
+RootTuber,enduse,RootTuber
+SheepGoat,enduse,SheepGoat
+SugarCrop,enduse,SugarCrop
+unconventional oil,primary,unconventional oil
+unconventional oil production,enduse,unconventional oil production
+UnmanagedLand,enduse,UnmanagedLand
+urban processes,enduse,urban processes
+Wheat,enduse,Wheat
+wholesale gas,eliminate,wholesale gas
+Compact Car,enduse,Compact Car
+Motorcycle (50-250cc),enduse,Motorcycle (50-250cc)
+Multipurpose Vehicle,enduse,Multipurpose Vehicle
+Subcompact Car,enduse,Subcompact Car
+Three-Wheeler,enduse,Three-Wheeler
+Truck (0-2t),enduse,Truck (0-2t)
+Truck (2-5t),enduse,Truck (2-5t)
+Truck (5-9t),enduse,Truck (5-9t)
+Truck (9-16t),enduse,Truck (9-16t)
+Moped,enduse,Moped
+Motorcycle (>250cc),enduse,Motorcycle (>250cc)
+Truck (>15t),enduse,Truck (>15t)
+Truck (0-1t),enduse,Truck (0-1t)
+Truck (6-15t),enduse,Truck (6-15t)
+Large Car,enduse,Large Car
+Midsize Car,enduse,Midsize Car
+Truck (1-6t),enduse,Truck (1-6t)
+Truck (6-30t),enduse,Truck (6-30t)
+Truck (0-4.5t),enduse,Truck (0-4.5t)
+Truck (4.5-15t),enduse,Truck (4.5-15t)
+Van,enduse,Van
+Truck (>32t),enduse,Truck (>32t)
+Truck (0-3.5t),enduse,Truck (0-3.5t)
+Truck (16-32t),enduse,Truck (16-32t)
+Truck (3.5-16t),enduse,Truck (3.5-16t)
+3W Rural,enduse,3W Rural
+Heavy Bus,enduse,Heavy Bus
+Light Bus,enduse,Light Bus
+Truck (>14t),enduse,Truck (>14t)
+Truck (0-6t),enduse,Truck (0-6t)
+Truck (6-14t),enduse,Truck (6-14t)
+Scooter,enduse,Scooter
+Truck,enduse,Truck
+Truck (>12t),enduse,Truck (>12t)
+Truck (0-2.7t),enduse,Truck (0-2.7t)
+Truck (2.7-4.5t),enduse,Truck (2.7-4.5t)
+Truck (4.5-12t),enduse,Truck (4.5-12t)
+Large Car and SUV,enduse,Large Car and SUV
+Light Truck and SUV,enduse,Light Truck and SUV

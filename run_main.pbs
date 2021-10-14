@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH -n 24
+#SBATCH -t 2:00:00
+#SBATCH -A 
+#SBATCH -p short,slurm
+
+module load git
+module load svn/1.8.13
+module load R/3.6.3
+module load java/1.8.0_31
+module load gcc/6.1.0
+
+Rscript main.R

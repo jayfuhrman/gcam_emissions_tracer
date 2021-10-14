@@ -1,0 +1,16 @@
+
+db/database_basexdb/atv.basex
+db/database_basexdb/inf.basex
+db/database_basexdb/tbl.basex
+db/database_basexdb/tbli.basex
+db/database_basexdb/txt.basex
+db/database_basexdb/txtl.basex
+db/database_basexdb/txtr.basex
+*.basex
+nonCO2_emissions_by_subsector.csv
+nonCO2_emissions_by_resource_production.csv
+output/exemplar queries/queryout_CO2_emissions_by_sector_no_bio_regionalized.csv
+output/exemplar queries/queryout_inputs_by_subsector_regionalized.csv
+output/exemplar queries/queryout_LUC_emissions_by_LUT_regionalized.csv
+output/exemplar queries/queryout_nonCO2_emissions_by_resource_production_regionalized.csv
+output/exemplar queries/queryout_nonCO2_emissions_by_subsector_regionalized.csv

@@ -1,0 +1,35 @@
+ghg,GWP,Units,type
+CO2,3.666667,MTC,CO2
+LUC CO2,3.666667,MTC,CO2
+CH4,28,Tg,Super Pollutant
+CH4_AGR,28,Tg,Super Pollutant
+CH4_AWB,28,Tg,Super Pollutant
+N2O,265,Tg,Super Pollutant
+N2O_AGR,265,Tg,Super Pollutant
+N2O_AWB,265,Tg,Super Pollutant
+C2F6,11.1,Gg,Super Pollutant
+CF4,6.63,Gg,Super Pollutant
+HFC125,3.17,Gg,Super Pollutant
+HFC134a,1.3,Gg,Super Pollutant
+HFC245fa,0.858,Gg,Super Pollutant
+SF6,23.5,Gg,Super Pollutant
+HFC143a,4.8,Gg,Super Pollutant
+HFC152a,0.138,Gg,Super Pollutant
+HFC227ea,3.35,Gg,Super Pollutant
+HFC23,12.4,Gg,Super Pollutant
+HFC236fa,8.06,Gg,Super Pollutant
+HFC32,0.677,Gg,Super Pollutant
+HFC365mfc,0.804,Gg,Super Pollutant
+C2F6,11.1,Tg,Super Pollutant
+CF4,6.63,Tg,Super Pollutant
+HFC125,3.17,Tg,Super Pollutant
+HFC134a,1.3,Tg,Super Pollutant
+HFC245fa,0.858,Tg,Super Pollutant
+SF6,23.5,Tg,Super Pollutant
+HFC143a,4.8,Tg,Super Pollutant
+HFC152a,0.138,Tg,Super Pollutant
+HFC227ea,3.35,Tg,Super Pollutant
+HFC23,12.4,Tg,Super Pollutant
+HFC236fa,8.06,Tg,Super Pollutant
+HFC32,0.677,Tg,Super Pollutant
+HFC365mfc,0.804,Tg,Super Pollutant
