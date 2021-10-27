@@ -134,6 +134,7 @@ fuel_distributor <- function(prj){
     # Rewrite transportation subsector to sector
     dplyr::mutate(sector = if_else(grepl("trn_", sector), subsector, sector)) 
   
+  
   # Primary sectors are inputs, but don't have any inputs
   primary_sectors <- c(dplyr::setdiff(sectors$input, sectors$sector), 
                        "traded unconventional oil",
@@ -540,7 +541,6 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     print("Total emissions from 1990 to 2100 match.")
   
   }
-  
   
   if (wide == TRUE){
     all_emissions <- all_emissions %>% 

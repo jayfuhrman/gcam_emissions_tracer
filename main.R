@@ -1,4 +1,4 @@
-FOLDER_LOCATION <- 'C:/Users/fuhr472/OneDrive - PNNL/Documents/Postdoc/Climateworks CDR/Files/GCAM_EmissionsTracer/'
+FOLDER_LOCATION <- 'C:/Users/fuhr472/OneDrive - PNNL/Documents/GitHub/cwf_emissions_tracer/'
 
 DATABASE_LOCATION <- FOLDER_LOCATION
 
@@ -99,5 +99,4 @@ readr::write_csv(land_change, LANDUSE_CHANGE_OUTPUT)
 cat(paste("------------------------------------------",
           "FILE COMPLETED.",
           "------------------------------------------", sep="\n"))
-
 
