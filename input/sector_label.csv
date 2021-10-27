@@ -1,14 +1,14 @@
 sector,type,rewrite
 2W and 3W,enduse,2W and 3W
 agricultural energy use,enduse,agricultural energy use
-airCO2,enduse,CO2 removal
+airCO2,enduse,ces
 alumina,enduse,alumina
 backup_electricity,transformation,electricity
 Beef,enduse,Beef
 biomass,primary,biomass
 Bus,enduse,Bus
 Car,enduse,Car
-cement,enduse,cement
+cement,enduse,cement limestone
 chemical energy use,enduse,chemical energy use
 chemical feedstocks,enduse,chemical feedstocks
 coal,primary,coal
@@ -70,7 +70,7 @@ PalmFruit,enduse,PalmFruit
 Passenger Rail,enduse,Passenger Rail
 Pork,enduse,Pork
 Poultry,enduse,Poultry
-process heat cement,enduse,cement
+process heat cement,enduse,cement process heat
 process heat dac,enduse,ces
 refining,transformation,refining
 resid cooling,enduse,resid cooling
