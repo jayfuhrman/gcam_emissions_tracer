@@ -9,11 +9,11 @@ elec_coal (conv pul CCS),coal
 elec_coal (conv pul),coal
 elec_coal (IGCC CCS),coal
 elec_coal (IGCC),coal
-elec_gas (CC CCS),gas
-elec_gas (CC),gas
-elec_gas (steam/CT),gas
-elec_refined liquids (CC CCS),oil
-elec_refined liquids (CC),oil
-elec_refined liquids (steam/CT),oil
+elec_gas (CC CCS),natural gas
+elec_gas (CC),natural gas
+elec_gas (steam/CT),natural gas
+elec_refined liquids (CC CCS),crude oil
+elec_refined liquids (CC),crude oil
+elec_refined liquids (steam/CT),crude oil
 electricity,electricity
 electricity_net_ownuse,electricity_net_ownuse
