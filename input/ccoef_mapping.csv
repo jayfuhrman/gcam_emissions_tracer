@@ -1,0 +1,25 @@
+PrimaryFuelCO2Coef.name,PrimaryFuelCO2Coef,fuel
+biomass,0,biomass
+regional biomass,23,biomass
+delivered biomass,23,biomass
+regional biomassOil,19.6,biomass
+regional sugar for ethanol,19.6,biomass
+regional corn for ethanol,19.6,biomass
+coal,27.3,coal
+regional coal,27.3,coal
+delivered coal,27.3,coal
+natural gas,14.2,natural gas
+regional natural gas,14.2,natural gas
+gas processing,14.2,natural gas
+gas pipeline,14.2,natural gas
+wholesale gas,14.2,natural gas
+delivered gas,14.2,natural gas
+crude oil,19.6,crude oil
+traded unconventional oil,19.6,crude oil
+regional oil,19.6,crude oil
+refining,19.6,
+refined liquids industrial,19.6,
+refined liquids enduse,19.6,
+limestone,0.08,limestone
+airCO2,1,atmospheric CO2
+unconventional oil upscaling,1.5,
