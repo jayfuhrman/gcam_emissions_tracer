@@ -144,8 +144,9 @@ trn_tailpipe_CO2_disag %>%
   distinct(enduse) -> trn_sectors
 
 all_emiss_no_elec_or_trn_CO2 <- all_emiss_no_elec_CO2 %>%
-  filter(!((enduse %in% transport_sectors$transportation_subsector & direct == 'refining') | direct %in% transport_sectors$transportation_subsector) | ghg != 'CO2' )
-
+  filter(!((enduse %in% transport_sectors$transportation_subsector & direct == 'refining') | 
+            direct %in% transport_sectors$transportation_subsector) | 
+            ghg != 'CO2') 
 
 
 
@@ -191,11 +192,28 @@ refining_emiss_by_fuel_no_bio_norm %>%
 
 
 
+## Now disaggregate hydrogen no bio emissions
+all_emiss_no_elec_or_trn_CO2 %>%
+  filter(direct != 'H2 enduse' | ghg != 'CO2') -> all_emiss_no_elec_or_trn_no_H2_CO2 
+
+
+all_emiss_no_elec_or_trn_CO2 %>%
+  filter(direct == 'H2 enduse' & ghg == 'CO2') -> H2_CO2_emiss
+
+inputs_by_subsector %>%
+  filter(sector == 'H2 central production' | sector == 'H2 forecourt') %>%
+  rename(PrimaryFuelCO2Coef.name = input) %>%
+  left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
+  mutate(PrimaryFuelCO2Coef = if_else(is.na(PrimaryFuelCO2Coef) | fuel == 'biomass',0,PrimaryFuelCO2Coef),
+         fuel = if_else(is.na(fuel),PrimaryFuelCO2Coef.name,fuel)) -> H2_inputs
+
+
+
   
-## Final processing #$
+## Final processing #
 
 #Fix cement emissions to separate out process heat (fossil fuel) from limestone-related emissions  
-elec_CO2_disag <- bind_rows(all_emiss_no_elec_or_trn_CO2,trn_tailpipe_CO2_disag,elec_CO2_no_bio_final) %>%
+elec_CO2_disag <- bind_rows(all_emiss_no_elec_or_trn_no_H2_CO2,trn_tailpipe_CO2_disag,elec_CO2_no_bio_final) %>%
   mutate(direct = if_else(direct == 'cement limestone','limestone',direct),
          transformation = if_else(transformation == 'cement limestone','calcination',transformation),
          enduse = if_else(enduse == 'cement limestone','cement',enduse)) %>%
