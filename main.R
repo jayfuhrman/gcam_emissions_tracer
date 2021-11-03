@@ -38,7 +38,7 @@ if (file.exists(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))){
   print("Data file opened.")
 } else {
   print("Querying database...")
-  conn <- rgcam::localDBConn(DATABASE_FOLDER, DATABASE_NAME)
+  conn <- rgcam::localDBConn(DATABASE_FOLDER, DATABASE_NAME,maxMemory = '16g')
   if(SCENARIO_NAME == "ALL"){
     for (scenario in rgcam::listScenariosInDB(conn)$name){
       prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), scenario,

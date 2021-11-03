@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <queries>
-
     <aQuery>
-        <all-regions/>
-            <emissionsQueryBuilder title="CO2 emissions by tech">
-                <axis1 name="technology">technology</axis1>
-                <axis2 name="Year">emissions</axis2>
+        <all-regions/>    
+                <emissionsQueryBuilder title="CO2 sequestration by tech">
+                <axis1 name="subsector">subsector</axis1>
+                <axis2 name="Year">emissions-sequestered</axis2>
                 <xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector' ]/*[@type='subsector']/*[@type='technology']//
-            CO2/emissions/node()</xPath>
+            CO2/emissions-sequestered/node()</xPath>
                 <comments/>
             </emissionsQueryBuilder>
-     </aQuery>
-
-
+    </aQuery>
 
     <aQuery>
         <all-regions/>
