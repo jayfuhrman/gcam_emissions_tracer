@@ -149,7 +149,7 @@ all_emiss_no_elec_or_trn_CO2 <- all_emiss_no_elec_CO2 %>%
             ghg != 'CO2') 
 
 
-
+CO2_sequestration_by_tech$year <- as.numeric(CO2_sequestration_by_tech$year)
 
 CO2_sequestration_by_tech %>%
   filter(sector == 'refining') %>%
@@ -159,7 +159,6 @@ CO2_sequestration_by_tech %>%
   summarize(sum_seq = sum(value)) %>%
   ungroup()-> refining_c_csq
 
-refining_c_csq$year <- as.numeric(refining_c_csq$year)
 
 inputs_by_subsector %>%  
   filter((sector == 'refining') & (input != 'elect_td_ind')) %>%
@@ -201,11 +200,105 @@ all_emiss_no_elec_or_trn_CO2 %>%
   filter(direct == 'H2 enduse' & ghg == 'CO2') -> H2_CO2_emiss
 
 inputs_by_subsector %>%
-  filter(sector == 'H2 central production' | sector == 'H2 forecourt') %>%
+  filter(sector == 'H2 central production' | sector == 'H2 forecourt production') %>%
   rename(PrimaryFuelCO2Coef.name = input) %>%
   left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
   mutate(PrimaryFuelCO2Coef = if_else(is.na(PrimaryFuelCO2Coef) | fuel == 'biomass',0,PrimaryFuelCO2Coef),
-         fuel = if_else(is.na(fuel),PrimaryFuelCO2Coef.name,fuel)) -> H2_inputs
+         fuel = if_else(is.na(fuel),PrimaryFuelCO2Coef.name,fuel),
+         c_input = value * PrimaryFuelCO2Coef) %>%
+  group_by(scenario,region,year,fuel) %>%
+  summarize(c_input = sum(c_input)) %>%
+  ungroup() -> H2_inputs
+
+CO2_sequestration_by_tech %>%
+  filter(sector == 'H2 central production' | sector == 'H2 forecourt production') %>%
+  mutate(fuel = if_else(subsector == 'gas','natural gas',subsector)) %>%
+  rename(c_seq = value)-> H2_sequestration
+
+H2_inputs %>%
+  left_join(H2_sequestration %>%
+              select(-sector,-subsector,-technology),by = c('scenario','region','year','fuel')) %>%
+  filter(!is.na(Units)) %>%
+  mutate(emiss_no_bio = c_input - c_seq) %>% #mutate to H2 production (the actual transformation) occurs at the end
+  group_by(scenario,region,year) %>%
+  mutate(normfrac = emiss_no_bio / sum(emiss_no_bio)) %>%
+  select(-Units) -> H2_inputs_joined
+
+
+
+H2_inputs_joined %>%
+  left_join(H2_CO2_emiss, by = c('scenario','region','year')) %>%
+  mutate(direct = fuel,
+         value = value * normfrac) %>%
+  select(-c_input,-c_seq,-emiss_no_bio,-fuel,-normfrac) -> H2_CO2_emiss_disag
+  
+
+#deal with all remaining CO2 emissions
+#break out H2 and refining emissions to be dealt with downstream
+
+c_containing <- c('biomass','coal','natural gas','gas processing','cement limestone','crude oil','CO2 removal')
+
+#all_emissions %>% select(scenario,region,direct,year,transformation,enduse,ghg,value,Units) %>%
+all_emiss_no_elec_or_trn_no_H2_CO2 %>%
+  filter(!(direct %in% c_containing) & ghg == 'CO2')  -> remaining_industry_CO2
+
+#all_emissions %>% select(scenario,region,direct,year,transformation,enduse,ghg,value,Units) %>%
+all_emiss_no_elec_or_trn_no_H2_CO2 %>%
+  filter(!(!(direct %in% c_containing) & ghg == 'CO2')) -> all_emiss_no_elec_or_trn_no_H2_CO2
+
+
+inputs_by_subsector %>%
+  filter(sector %in% remaining_industry_CO2$direct) %>%
+  rename(PrimaryFuelCO2Coef.name = input) %>%
+  mutate(PrimaryFuelCO2Coef.name = if_else(PrimaryFuelCO2Coef.name == 'process heat dac','wholesale gas',PrimaryFuelCO2Coef.name)) %>%
+  left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
+  mutate(fuel = if_else(PrimaryFuelCO2Coef.name %in% c('elect_td_ind','elect_td_bld'),'electricity',
+                        if_else(PrimaryFuelCO2Coef.name == 'H2 enduse','H2 enduse',
+                                if_else(PrimaryFuelCO2Coef.name %in% c('refined liquids industrial','refined liquids enduse'),'refining',fuel))),
+         PrimaryFuelCO2Coef = if_else(is.na(PrimaryFuelCO2Coef),0,PrimaryFuelCO2Coef),
+         PrimaryFuelCO2Coef = if_else(fuel == 'biomass',0,PrimaryFuelCO2Coef),
+         c_input = value * PrimaryFuelCO2Coef) %>%
+  filter(!is.na(c_input)) %>%
+  group_by(scenario,region,sector,year) %>%
+  mutate(sum_c = sum(c_input),
+         normfrac = c_input/sum_c) %>%
+  ungroup() %>%
+  rename(direct = sector) -> remaining_industry_inputs
+
+
+
+
+remaining_industry_inputs %>%
+  select(-PrimaryFuelCO2Coef,-c_input,-sum_c,-PrimaryFuelCO2Coef.name,-subsector,-value,-Units) %>%
+  left_join(remaining_industry_CO2,by = c('scenario','region','year','direct')) %>%
+  mutate(value = value * normfrac,
+         value = if_else(is.na(value),0,value),
+         ghg = 'CO2',
+         Units = 'MTCO2e',
+         enduse = if_else(is.na(enduse),direct,enduse),
+         direct = fuel,
+         transformation = if_else(fuel == 'electricity' | fuel == 'H2 enduse' | fuel == 'refining' | fuel == 'district heat',fuel,transformation)) %>%
+  select(-normfrac,-fuel) %>%
+  filter(year >= 2005,
+         !(direct %in% c('electricity','H2 enduse'))) -> remaining_industry_disag_w_refining  #filter out electricity + hydrogen since these are already accounted for elsewhere
+
+
+
+remaining_industry_disag_w_refining %>%
+  filter(direct == 'refining') -> refining_ind_for_disag
+
+remaining_industry_disag_w_refining %>%
+  filter(direct != 'refining') -> remaining_industry_CO2_no_refining
+
+
+refining_emiss_by_fuel_no_bio_norm %>%
+  left_join(refining_ind_for_disag,by = c('scenario','region','year','ghg','transformation')) %>%
+  filter(year >= 2005) %>%
+  mutate(direct = fuel,
+         value = value * normfrac) %>%
+  select(-fuel,-normfrac) -> remaining_industry_refining_disag 
+
+remaining_industry_disag <- bind_rows(remaining_industry_refining_disag,remaining_industry_CO2_no_refining)
 
 
 
@@ -213,7 +306,11 @@ inputs_by_subsector %>%
 ## Final processing #
 
 #Fix cement emissions to separate out process heat (fossil fuel) from limestone-related emissions  
-elec_CO2_disag <- bind_rows(all_emiss_no_elec_or_trn_no_H2_CO2,trn_tailpipe_CO2_disag,elec_CO2_no_bio_final) %>%
+elec_CO2_disag <- bind_rows(all_emiss_no_elec_or_trn_no_H2_CO2,
+                            trn_tailpipe_CO2_disag,
+                            elec_CO2_no_bio_final,
+                            H2_CO2_emiss_disag) %>%
+                            #remaining_industry_disag) %>%
   mutate(direct = if_else(direct == 'cement limestone','limestone',direct),
          transformation = if_else(transformation == 'cement limestone','calcination',transformation),
          enduse = if_else(enduse == 'cement limestone','cement',enduse)) %>%
@@ -226,7 +323,7 @@ elec_CO2_disag <- bind_rows(all_emiss_no_elec_or_trn_no_H2_CO2,trn_tailpipe_CO2_
   pivot_wider(names_from = year, values_from = value, values_fill = list(value = 0))
 
 
-write.csv(elec_CO2_disag,'output/emissions-GCAM_CWF-elec_trn_disag.csv')
+write.csv(elec_CO2_disag,'output/emissions-GCAM_CWF-elec_trn_ind_disag.csv')
 
 
 
