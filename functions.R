@@ -403,14 +403,17 @@ final_fuel_CO2_disag <- function(all_emissions){
   
   
   #temporary until we can query inputs by tech directly
-  inputs_by_tech <- read_csv('inputs_by_tech.csv') %>% 
-    pivot_longer(cols = '1990':'2100',names_to = 'year') %>%
-    mutate(scenario = gsub("(.*),.*", "\\1", scenario))
+#  inputs_by_tech <- read_csv('inputs_by_tech.csv') %>% 
+#    pivot_longer(cols = '1990':'2100',names_to = 'year') %>%
+#    mutate(scenario = gsub("(.*),.*", "\\1", scenario))
   
   
-  CO2_sequestration_by_tech <- read_csv('CO2_sequestration_by_tech.csv') %>% 
-    pivot_longer(cols = '1990':'2100',names_to = 'year') %>%
-    mutate(scenario = gsub("(.*),.*", "\\1", scenario))
+#  CO2_sequestration_by_tech <- read_csv('CO2_sequestration_by_tech.csv') %>% 
+#    pivot_longer(cols = '1990':'2100',names_to = 'year') %>%
+#    mutate(scenario = gsub("(.*),.*", "\\1", scenario))
+  
+  CO2_sequestration_by_tech <- rgcam::getQuery(prj, 'CO2 sequestration by tech')
+  
   
   sectors %>%
     filter(type == 'transformation') %>%
@@ -699,7 +702,8 @@ final_fuel_CO2_disag <- function(all_emissions){
     mutate(direct = if_else((direct == 'gas processing') & (ghg == 'CO2'),'natural gas',direct),#assign all direct gas processing CO2 emissions to natural gas since we're using emissions no bio query and bio constitutes a very small fraction of gas processing anyway
            direct = if_else(direct == 'H2 enduse','H2 production',direct),
            transformation = if_else(transformation == 'H2 enduse','H2 production',transformation),
-           transformation = if_else(direct == 'natural gas' & transformation != 'electricity' & transformation != 'H2 production' & transformation != 'refining','gas processing',transformation)) %>%
+           transformation = if_else(direct == 'natural gas' & transformation != 'electricity' & transformation != 'H2 production' & transformation != 'refining' & transformation != 'district heat','gas processing',transformation),
+           enduse = if_else(enduse == 'ces','CO2 removal',enduse)) %>%
     group_by(scenario,region,direct,transformation,enduse,year,ghg,Units) %>%
     summarize(value = sum(value)) %>%
     ungroup() #%>% 

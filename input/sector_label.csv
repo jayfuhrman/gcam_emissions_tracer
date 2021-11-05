@@ -1,7 +1,7 @@
 sector,type,rewrite
 2W and 3W,enduse,2W and 3W
 agricultural energy use,enduse,agricultural energy use
-airCO2,enduse,ces
+airCO2,enduse,CO2 removal
 alumina,enduse,alumina
 backup_electricity,transformation,electricity
 Beef,enduse,Beef
@@ -71,7 +71,7 @@ Passenger Rail,enduse,Passenger Rail
 Pork,enduse,Pork
 Poultry,enduse,Poultry
 process heat cement,enduse,cement process heat
-process heat dac,enduse,ces
+process heat dac,enduse,process heat dac
 refining,transformation,refining
 resid cooling,enduse,resid cooling
 resid heating,enduse,resid heating
@@ -125,3 +125,4 @@ Truck (2.7-4.5t),enduse,Truck (2.7-4.5t)
 Truck (4.5-12t),enduse,Truck (4.5-12t)
 Large Car and SUV,enduse,Large Car and SUV
 Light Truck and SUV,enduse,Light Truck and SUV
+ces,enduse,CO2 removal
