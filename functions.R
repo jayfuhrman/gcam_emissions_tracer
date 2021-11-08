@@ -729,7 +729,6 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
   
   
   nonCO2_combustion_emissions_by_tech <- nonCO2_emissions_by_tech %>%
-#    rename(ghg = GHG) %>%
     filter(ghg %in% c('CH4','N2O')) %>%
     mutate(sector = if_else(subsector %in% transport$transportation_subsector,subsector,sector),
            fuel = if_else(technology %in% c('Liquids','NG','Coal','biomass'),technology,subsector),
