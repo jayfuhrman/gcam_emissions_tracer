@@ -431,9 +431,6 @@ final_fuel_CO2_disag <- function(all_emissions){
     filter(ghg == 'CO2') -> CO2_emiss
   
   
-  
-  
-  
   CO2_emiss_transform <- CO2_emiss %>%
     filter(direct %in% transformation_sectors$rewrite) 
   
@@ -607,7 +604,6 @@ final_fuel_CO2_disag <- function(all_emissions){
     group_by(scenario,region,year) %>%
     mutate(normfrac = emiss_no_bio / sum(emiss_no_bio)) %>%
     select(-Units) -> H2_inputs_joined
-  
   
   
   H2_inputs_joined %>%
@@ -931,6 +927,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     filter(year > 1990) %>%
     select(scenario, region, year, direct, transformation, enduse, ghg, value, Units)
   
+  write.csv(all_emissions,'all_emissions.csv')
   #final fuel processing
   all_emissions <- final_fuel_CO2_disag(all_emissions)
 
