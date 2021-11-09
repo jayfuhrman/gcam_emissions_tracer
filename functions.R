@@ -395,21 +395,11 @@ fuel_distributor <- function(prj){
   return(final_df)
 }
 
-
 final_fuel_CO2_disag <- function(all_emissions){
   
   sectors <- read_csv('input/sector_label.csv')
   elec_gen_fuels <- read_csv('input/elec_generation.csv')
   
-# temporary until we can query inputs by tech directly
-#  inputs_by_tech <- read_csv('inputs_by_tech.csv') %>% 
-#    pivot_longer(cols = '1990':'2100',names_to = 'year') %>%
-#    mutate(scenario = gsub("(.*),.*", "\\1", scenario))
-  
-  
-#  CO2_sequestration_by_tech <- read_csv('CO2_sequestration_by_tech.csv') %>% 
-#    pivot_longer(cols = '1990':'2100',names_to = 'year') %>%
-#    mutate(scenario = gsub("(.*),.*", "\\1", scenario))
   
   CO2_sequestration_by_tech <- rgcam::getQuery(prj, 'CO2 sequestration by tech')
   
@@ -422,8 +412,6 @@ final_fuel_CO2_disag <- function(all_emissions){
     filter(rewrite == 'electricity')
   
   inputs_by_subsector <- rgcam::getQuery(prj, "inputs by subsector")
-  
-  
   
   
   all_emissions %>%
@@ -760,7 +748,7 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
   
   
   nonCO2_emissions_by_tech_transform <- nonCO2_emissions_by_tech %>%
-#    rename(ghg = GHG) %>%
+    #    rename(ghg = GHG) %>%
     filter(ghg %in% c('CH4','N2O') & sector %in% c('H2 central production','H2 forecourt production','electricity','district heat','refining')) %>%
     mutate(sector = if_else(sector %in% c('H2 central production','H2 forecourt production'),'H2 production',sector),
            fuel = if_else(subsector %in% c('biomass','biomass liquids'),'biomass',
@@ -794,10 +782,12 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
     group_by(scenario,region,direct,transformation,enduse,ghg,year,Units) %>%
     summarize(value = sum(value)) %>% #sum combustion and resource extraction emissions for some sectors
     ungroup() %>%
+    arrange(year) %>%
     select(scenario,region,year,direct,transformation,enduse,ghg,value,Units) -> all_emiss_w_nonCO2_comb_disag_distinct
   
   return(all_emiss_w_nonCO2_comb_disag_distinct)
 }
+
 
 # emissions calculation
 emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_aggregation, wide = TRUE){
