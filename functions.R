@@ -395,6 +395,29 @@ fuel_distributor <- function(prj){
   return(final_df)
 }
 
+
+
+direct_aggregation <- function(all_emissions){
+  non_energy <- c('limestone','electricity','other industrial processes','industrial processes','adipic acid','nitric acid','solvents','waste_incineration','wastewater treatment','comm cooling','resid cooling','urban processes')
+  food_agriculture <- c('Wheat','Corn','SugarCrop','SheepGoat','Beef','Dairy','FiberCrop','FodderGrass','FodderHerb','MiscCrop','OilCrop','OtherGrain','PalmFruit','Pork','Poultry','Rice','RootTuber')
+  
+  
+  all_emissions %>%
+    mutate(direct = if_else(direct %in% non_energy,'Non-energy',direct)) %>%
+    mutate(direct = if_else(direct == 'refined liquids','crude oil',direct)) %>%
+    mutate(direct = if_else(direct == 'traditional biomass','biomass',direct)) %>%
+    mutate(direct = if_else(direct == 'unconventional oil','crude oil',direct)) %>%
+    mutate(direct = if_else(direct %in% food_agriculture,'Food angriculture',direct)) %>%
+    mutate(direct = if_else(ghg == 'LUC CO2','Land Use',direct)) %>%
+    mutate(transformation = if_else(transformation == 'H2 grid electrolysis','H2 production',transformation)) %>%
+    group_by(scenario,region,year,direct,transformation,enduse,ghg,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    filter(enduse != 'UnmanagedLand') -> all_emissions
+  return(all_emissions)
+}
+
+
 final_fuel_CO2_disag <- function(all_emissions){
   
   sectors <- read_csv('input/sector_label.csv')
@@ -767,25 +790,6 @@ final_fuel_CO2_disag <- function(all_emissions){
     summarize(value = sum(value)) %>%
     ungroup() #%>% 
   return(df)
-}
-
-direct_aggregation <- function(all_emissions){
-  non_energy <- c('limestone','electricity','other industrial processes','industrial processes','adipic acid','nitric acid','solvents','waste_incineration','wastewater treatment','comm cooling','resid cooling','urban processes')
-  food_agriculture <- c('Wheat','Corn','SugarCrop','SheepGoat','Beef','Dairy','FiberCrop','FodderGrass','FodderHerb','MiscCrop','OilCrop','OtherGrain','PalmFruit','Pork','Poultry','Rice','RootTuber')
-  
-  
-  all_emissions %>%
-    mutate(direct = if_else(direct %in% non_energy,'Non-energy',direct)) %>%
-    mutate(direct = if_else(direct == 'refined liquids','crude oil',direct)) %>%
-    mutate(direct = if_else(direct == 'traditional biomass','biomass',direct)) %>%
-    mutate(direct = if_else(direct == 'unconventional oil','crude oil',direct)) %>%
-    mutate(direct = if_else(direct %in% food_agriculture,'Food and Agriculture',direct)) %>%
-    mutate(direct = if_else(ghg == 'LUC CO2','Land Use',direct)) %>%
-    group_by(scenario,region,year,direct,transformation,enduse,ghg,Units) %>%
-    summarize(value = sum(value)) %>%
-    ungroup() %>%
-    filter(enduse != 'UnmanagedLand') -> all_emissions
-  return(all_emissions)
 }
 
 final_fuel_nonCO2_disag <- function(all_emissions) {
