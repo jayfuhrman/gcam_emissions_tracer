@@ -438,10 +438,10 @@ final_fuel_CO2_disag <- function(all_emissions){
     group_by(region,scenario,year) %>%
     mutate(normfrac = value/sum(value)) %>%
     ungroup() %>%
-    select(-value,-Units) -> tmp
+    select(-value,-Units) -> tmp_elec
   
   
-  tmp%>%
+  tmp_elec%>%
     left_join(CO2_emiss_elec, by = c('scenario','region','year')) %>%
     mutate(value = value * normfrac) %>%
     left_join(elec_gen_fuels, by = c('sector')) %>%
@@ -457,6 +457,32 @@ final_fuel_CO2_disag <- function(all_emissions){
            Units = 'MTCO2e') %>%
     select(-fuel) -> elec_CO2_no_bio_final
   print("Allocated electricity emissions by fuel")
+  
+  
+  ####
+  #get electricity emissions intensity per unit generated as it is a fuel for certain other transform sectors (e.g., H2 production)
+  
+  
+  outputs_by_subsector <- rgcam::getQuery(prj, 'outputs by subsector') %>%
+    filter(sector == 'electricity') %>%
+    group_by(scenario,region,year,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    rename(elec_output = value) -> elec_outputs
+  
+  
+  elec_CO2_no_bio_final %>%
+    group_by(scenario,region,year,ghg,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    rename(elec_emiss = value) -> tot_elec_emissions
+  
+  elec_emiss_intensity <- tot_elec_emissions %>%
+    left_join(elec_outputs %>% select(-Units),by = c('scenario','region','year')) %>%
+    mutate(value = elec_emiss / elec_output,
+           Units = 'MtCO2-per-EJ') %>%
+    select(scenario,region,year,ghg,Units,value)
+  
   
   
   
@@ -577,28 +603,79 @@ final_fuel_CO2_disag <- function(all_emissions){
            c_input = value * PrimaryFuelCO2Coef) %>%
     group_by(scenario,region,year,fuel) %>%
     summarize(c_input = sum(c_input)) %>%
-    ungroup() -> H2_inputs
+    ungroup() %>%
+    filter(!(fuel %in% c('elect_td_ind','elect_td_trn'))) -> H2_inputs_no_elec #need to bind back electricity emissions
+  
+  inputs_by_subsector %>%
+    filter(sector == 'H2 central production' | sector == 'H2 forecourt production',
+           input %in% c('elect_td_ind','elect_td_trn')) %>%
+    group_by(scenario,region,year,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    left_join(elec_emiss_intensity %>% 
+                select(-Units) %>%
+                rename(emiss_intensity = value),by = c('scenario','region','year')) %>%
+    mutate(c_input = value * emiss_intensity * 12 /44, #need to convert back to MtC from MtCO2e
+           fuel = 'electricity') %>%
+    select(-emiss_intensity,-value) -> H2_grid_elec_inputs 
+  
+  H2_inputs <- bind_rows(H2_grid_elec_inputs,H2_inputs_no_elec) %>%
+    select(-Units,-ghg)
+  
   
   CO2_sequestration_by_tech %>%
     filter(sector == 'H2 central production' | sector == 'H2 forecourt production') %>%
     mutate(fuel = if_else(subsector == 'gas','natural gas',subsector)) %>%
     rename(c_seq = value)-> H2_sequestration
   
+  H2_sequestration %>%
+    distinct(scenario,region,year) %>%
+    mutate(fuel = 'electricity',
+           c_seq = 0) -> H2_elec_seq
+  
+  H2_sequestration <- bind_rows(H2_sequestration,H2_elec_seq)
+  
   H2_inputs %>%
     left_join(H2_sequestration %>%
                 select(-sector,-subsector,-technology),by = c('scenario','region','year','fuel')) %>%
-    filter(!is.na(Units)) %>%
-    mutate(emiss_no_bio = c_input - c_seq) %>% #mutate to H2 production (the actual transformation) occurs at the end
+    mutate(c_seq = if_else(is.na(c_seq),0,c_seq),
+           emiss_no_bio = c_input - c_seq,
+           Units = 'MTC') %>% #mutate to H2 production (the actual transformation) occurs at the end
     group_by(scenario,region,year) %>%
     mutate(normfrac = emiss_no_bio / sum(emiss_no_bio)) %>%
-    select(-Units) -> H2_inputs_joined
+    select(-Units) -> H2_inputs_joined 
   
   
   H2_inputs_joined %>%
     left_join(H2_CO2_emiss, by = c('scenario','region','year')) %>%
     mutate(direct = fuel,
            value = value * normfrac) %>%
-    select(-c_input,-c_seq,-emiss_no_bio,-fuel,-normfrac) -> H2_CO2_emiss_disag
+    select(-c_input,-c_seq,-emiss_no_bio,-fuel,-normfrac) %>%
+    filter(direct %in% c('electricity','biomass','coal','natural gas','crude oil')) %>%
+    mutate(transformation = if_else(direct == 'electricity','H2 grid electrolysis',transformation)) -> H2_CO2_emiss_disag
+  
+  
+  H2_CO2_emiss_disag %>%
+    filter(direct != 'electricity') -> H2_CO2_emiss_no_elec
+  
+  H2_CO2_emiss_disag %>%
+    filter(direct == 'electricity') -> H2_CO2_emiss_elec
+  
+  tmp_elec%>%
+    left_join(elec_gen_fuels, by = c('sector')) %>%
+    mutate(fuel = if_else(fuel == 'backup_electricity','natural gas',fuel)) %>%
+    group_by(scenario,region,year,fuel) %>%
+    summarize(normfrac = sum(normfrac)) %>%
+    ungroup() -> temp_elec_fuels
+  
+  temp_elec_fuels %>%
+    left_join(H2_CO2_emiss_elec,by = c('scenario','region','year')) %>%
+    filter(!is.na(Units)) %>%
+    mutate(value = normfrac * value) %>%
+    select(-direct,-normfrac) %>%
+    rename(direct = fuel) -> H2_elec_CO2_disag
+  
+  H2_CO2_emiss_disag <- bind_rows(H2_CO2_emiss_no_elec,H2_elec_CO2_disag)
   
   
   #deal with all remaining CO2 emissions
@@ -690,6 +767,25 @@ final_fuel_CO2_disag <- function(all_emissions){
     summarize(value = sum(value)) %>%
     ungroup() #%>% 
   return(df)
+}
+
+direct_aggregation <- function(all_emissions){
+  non_energy <- c('limestone','electricity','other industrial processes','industrial processes','adipic acid','nitric acid','solvents','waste_incineration','wastewater treatment','comm cooling','resid cooling','urban processes')
+  food_agriculture <- c('Wheat','Corn','SugarCrop','SheepGoat','Beef','Dairy','FiberCrop','FodderGrass','FodderHerb','MiscCrop','OilCrop','OtherGrain','PalmFruit','Pork','Poultry','Rice','RootTuber')
+  
+  
+  all_emissions %>%
+    mutate(direct = if_else(direct %in% non_energy,'Non-energy',direct)) %>%
+    mutate(direct = if_else(direct == 'refined liquids','crude oil',direct)) %>%
+    mutate(direct = if_else(direct == 'traditional biomass','biomass',direct)) %>%
+    mutate(direct = if_else(direct == 'unconventional oil','crude oil',direct)) %>%
+    mutate(direct = if_else(direct %in% food_agriculture,'Food and Agriculture',direct)) %>%
+    mutate(direct = if_else(ghg == 'LUC CO2','Land Use',direct)) %>%
+    group_by(scenario,region,year,direct,transformation,enduse,ghg,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    filter(enduse != 'UnmanagedLand') -> all_emissions
+  return(all_emissions)
 }
 
 final_fuel_nonCO2_disag <- function(all_emissions) {
@@ -917,12 +1013,13 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     filter(year > 1990) %>%
     select(scenario, region, year, direct, transformation, enduse, ghg, value, Units)
   
-  write.csv(all_emissions,'all_emissions.csv')
+  #write.csv(all_emissions,'all_emissions.csv')
   #final fuel processing
   all_emissions <- final_fuel_CO2_disag(all_emissions)
 
   all_emissions <- final_fuel_nonCO2_disag(all_emissions) #disaggregate nonCO2 combustion emissions
   
+  all_emissions <- direct_aggregation(all_emissions)
 
   
   global <- all_emissions %>%
