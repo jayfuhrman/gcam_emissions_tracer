@@ -465,6 +465,14 @@ final_fuel_CO2_disag <- function(all_emissions){
   
   
   tmp_elec%>%
+    left_join(elec_gen_fuels, by = c('sector')) %>%
+    mutate(fuel = if_else(fuel == 'backup_electricity','natural gas',fuel)) %>%
+    group_by(scenario,region,year,fuel) %>%
+    summarize(normfrac = sum(normfrac)) %>%
+    ungroup() -> temp_elec_fuels
+  
+  
+  tmp_elec%>%
     left_join(CO2_emiss_elec, by = c('scenario','region','year')) %>%
     mutate(value = value * normfrac) %>%
     left_join(elec_gen_fuels, by = c('sector')) %>%
@@ -592,12 +600,33 @@ final_fuel_CO2_disag <- function(all_emissions){
            emiss_no_bio = c_input - sum_seq) -> refining_emiss_by_fuel_no_bio
   
   
-  refining_emiss_by_fuel_no_bio %>%
+  inputs_by_subsector %>%  
+    filter((sector == 'refining') & (input == 'elect_td_ind')) %>%
+    left_join(elec_emiss_intensity %>%
+                select(-Units) %>%
+                rename(emiss_intensity = value),by = c('scenario','region','year')) %>%
+    mutate(value = value * emiss_intensity * 12 / 44, #convert to MtC
+           Units = 'MTC') %>%
+    select(-emiss_intensity)-> refining_elec_input
+  
+  temp_elec_fuels %>%
+    left_join(refining_elec_input,by = c('scenario','region','year')) %>%
+    mutate(c_input = value * normfrac,
+           sum_seq = 0,
+           emiss_no_bio = c_input - sum_seq) %>%
+    select(scenario,region,year,fuel,c_input,sum_seq,emiss_no_bio) -> refining_elec_input_joined #disaggregate electricity CO2 emissions for refining
+  
+  refining_emiss_by_fuel_no_bio_bind <- bind_rows(refining_emiss_by_fuel_no_bio,refining_elec_input_joined) %>%
+    group_by(scenario,region,year,fuel) %>%
+    summarize(emiss_no_bio = sum(emiss_no_bio)) %>%
+    ungroup()
+  
+  refining_emiss_by_fuel_no_bio_bind %>%
     group_by(scenario,region,year) %>%
     mutate(normfrac = emiss_no_bio/sum(emiss_no_bio),
            transformation = 'refining',
            ghg = 'CO2') %>%
-    select(-sum_seq,-c_input,-emiss_no_bio) -> refining_emiss_by_fuel_no_bio_norm
+    select(-emiss_no_bio) -> refining_emiss_by_fuel_no_bio_norm
   
   
   refining_emiss_by_fuel_no_bio_norm %>%
@@ -684,12 +713,6 @@ final_fuel_CO2_disag <- function(all_emissions){
   H2_CO2_emiss_disag %>%
     filter(direct == 'electricity') -> H2_CO2_emiss_elec
   
-  tmp_elec%>%
-    left_join(elec_gen_fuels, by = c('sector')) %>%
-    mutate(fuel = if_else(fuel == 'backup_electricity','natural gas',fuel)) %>%
-    group_by(scenario,region,year,fuel) %>%
-    summarize(normfrac = sum(normfrac)) %>%
-    ungroup() -> temp_elec_fuels
   
   temp_elec_fuels %>%
     left_join(H2_CO2_emiss_elec,by = c('scenario','region','year')) %>%
@@ -1034,9 +1057,15 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   
   all_emissions <- bind_rows(all_emissions, global) %>% filter(enduse != 'UnmanagedLand')
 
+  write.csv(ghg,'original_emissions.csv')
   original_emissions <- sum(filter(ghg, year > 1990)$value) + 
     sum(filter(LUC_emissions, year > 1990)$value)
+  
+  print(paste0('original emissions: ',original_emissions))
+  
   calculated_emissions <- filter(all_emissions, region != "Global")$value %>% sum(na.rm = T)
+  
+  print(paste0('calculated emissions: ',calculated_emissions))
   
   if (round(original_emissions - calculated_emissions,0) != 0){
     print("Total emissions from 1990 to 2100 do NOT match.")
