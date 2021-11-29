@@ -18,8 +18,15 @@ crude oil,19.6,crude oil
 traded unconventional oil,19.6,crude oil
 regional oil,19.6,crude oil
 refining,19.6,
-refined liquids industrial,19.6,
-refined liquids enduse,19.6,
+refined liquids industrial,19.6,refining
+refined liquids enduse,19.6,refining
 limestone,0.08,limestone
-airCO2,1,atmospheric CO2
+airCO2,-1,atmospheric CO2
 unconventional oil upscaling,1.5,
+cement CCS,,limestone
+refined liquids,,refining
+gas CCS,,natural gas
+gasCCS,,natural gas
+biomass CCS,,biomass
+refined liquids CCS,,refining
+coal CCS,,coal
