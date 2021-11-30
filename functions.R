@@ -593,7 +593,8 @@ final_fuel_CO2_disag <- function(all_emissions){
            emiss_no_bio = c_input - sum_seq) %>%
     select(scenario,region,year,fuel,c_input,sum_seq,emiss_no_bio) -> refining_elec_input_joined #disaggregate electricity CO2 emissions for refining
   
-  refining_emiss_by_fuel_no_bio_bind <- bind_rows(refining_emiss_by_fuel_no_bio,refining_elec_input_joined) %>%
+  #refining_emiss_by_fuel_no_bio_bind <- bind_rows(refining_emiss_by_fuel_no_bio,refining_elec_input_joined) %>%
+  refining_emiss_by_fuel_no_bio_bind <- bind_rows(refining_emiss_by_fuel_no_bio) %>%
     mutate(emiss_no_bio = if_else(is.na(emiss_no_bio),0,emiss_no_bio)) %>%
     group_by(scenario,region,year,fuel) %>%
     summarize(emiss_no_bio = sum(emiss_no_bio)) %>%
@@ -652,8 +653,7 @@ final_fuel_CO2_disag <- function(all_emissions){
            fuel = 'electricity') %>%
     select(-emiss_intensity,-value) -> H2_grid_elec_inputs 
   
-  H2_inputs <- bind_rows(H2_grid_elec_inputs,H2_inputs_no_elec) %>%
-    select(-Units,-ghg)
+  H2_inputs <- bind_rows(H2_inputs_no_elec)
   
   
   CO2_sequestration_by_tech %>%
@@ -666,7 +666,7 @@ final_fuel_CO2_disag <- function(all_emissions){
     mutate(fuel = 'electricity',
            c_seq = 0) -> H2_elec_seq
   
-  H2_sequestration <- bind_rows(H2_sequestration,H2_elec_seq)
+  H2_sequestration <- bind_rows(H2_sequestration) #,H2_elec_seq)
   
   H2_inputs %>%
     left_join(H2_sequestration %>%
@@ -702,7 +702,8 @@ final_fuel_CO2_disag <- function(all_emissions){
     select(-direct,-normfrac) %>%
     rename(direct = fuel) -> H2_elec_CO2_disag
   
-  H2_CO2_emiss_disag <- bind_rows(H2_CO2_emiss_no_elec,H2_elec_CO2_disag)
+  #H2_CO2_emiss_disag <- bind_rows(H2_CO2_emiss_no_elec,H2_elec_CO2_disag)
+  H2_CO2_emiss_disag <- bind_rows(H2_CO2_emiss_no_elec)
   
   
   #deal with all remaining CO2 emissions
@@ -881,13 +882,16 @@ direct_aggregation <- function(all_emissions){
     mutate(direct = if_else(direct == 'refined liquids','crude oil',direct)) %>%
     mutate(direct = if_else(direct == 'traditional biomass','biomass',direct)) %>%
     mutate(direct = if_else(direct == 'unconventional oil','crude oil',direct)) %>%
-    mutate(direct = if_else(direct %in% food_agriculture,'Food angriculture',direct)) %>%
+    mutate(direct = if_else(direct %in% food_agriculture,'Food and agriculture',direct)) %>%
     mutate(direct = if_else(ghg == 'LUC CO2','Land Use',direct)) %>%
+    mutate(direct = if_else(ghg == 'CO2' & direct %in% c('coal','crude oil','natural gas') & value < 0,'biomass CCS',direct)) %>%
+    mutate(direct = if_else(ghg == 'CO2' & direct == 'biomass' & value <= 0,'biomass CCS',direct)) %>%
+    mutate(direct = if_else(ghg == 'CO2' & direct == 'biomass CCS' & value >= 0,'natural gas',direct)) %>% #due to numerical precision some small amount of biomass CO2 emissions come out as small positive numbers (and vise versa for )
     mutate(transformation = if_else(transformation == 'H2 grid electrolysis','H2 production',transformation)) %>%
+    mutate(direct = if_else(enduse == 'UnmanagedLand','Fires and Deforestation',direct)) %>%
     group_by(scenario,region,year,direct,transformation,enduse,ghg,Units) %>%
     summarize(value = sum(value)) %>%
-    ungroup() -> all_emissions#%>%
-    #filter(enduse != 'UnmanagedLand') -> all_emissions
+    ungroup() -> all_emissions
   return(all_emissions)
 }
 
@@ -1117,7 +1121,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     filter(year > 1990) %>%
     select(scenario, region, year, direct, transformation, enduse, ghg, value, Units)
   
-  #write.csv(all_emissions,'all_emissions.csv')
+  write.csv(all_emissions,'all_emissions.csv')
   #final fuel processing
   all_emissions <- final_fuel_CO2_disag(all_emissions)
 
@@ -1138,15 +1142,19 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   
   original_emissions <- sum(filter(ghg, year > 1990)$value) + 
     sum(filter(LUC_emissions, year > 1990)$value)
-  write.csv(ghg,'original_emissions.csv')
+  print(paste0('original emissions: ',original_emissions))
+
   calculated_emissions <- filter(all_emissions, region != "Global")$value %>% sum(na.rm = T)
-  write.csv(filter(all_emissions, region != "Global"),'calculated_emissions.csv')
+  print(paste0('calculated emissions: ',calculated_emissions))
+  
   
   if (round(original_emissions - calculated_emissions,0) != 0){
     print("Total emissions from 1990 to 2100 do NOT match.")
+    write.csv(ghg %>% filter(year > 1990),'original_ghg.csv')
+    write.csv(LUC_emissions %>% filter(year > 1990),'original_LUC.csv')
+    write.csv(filter(all_emissions, region != "Global"),'calculated_emissions.csv')
   } else {
     print("Total emissions from 1990 to 2100 match.")
-    
   }
   if (wide == TRUE){
     all_emissions <- all_emissions %>% 
