@@ -994,6 +994,127 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
   return(all_emiss_w_nonCO2_comb_disag_distinct)
 }
 
+# Function to distribute co2 sequestration same as fuel tracer
+co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_FORMAT = TRUE){
+  # List of transformation sectors
+  transf_sectors <- (fuel_tracing %>% 
+                       distinct(transformation) %>%
+                       filter(!(transformation %in% fuel_tracing$enduse)))$transformation
+  
+  # Ratio of primary in transformation
+  primary_in_trans <- fuel_tracing %>%
+    # filter(region == "China", year == 2050) %>% # TEMPORARY
+    group_by(scenario, region, year, primary, transformation) %>%
+    summarise(value = sum(value)) %>%
+    group_by(scenario, region, year, transformation) %>%
+    mutate(ratio_primary_in_trans = value / sum(value)) %>%
+    ungroup() %>%
+    select(-value, primary_map = primary, trans_map = transformation) %>%
+    filter(trans_map %in% transf_sectors)
+  #filter(trans_map != "iron and steel")
+  
+  # Ratio of enduse in transformation
+  enduse_in_trans <- fuel_tracing %>%
+    # filter(region == "China", year == 2050) %>% # TEMPORARY
+    group_by(scenario, region, year, transformation, enduse) %>%
+    summarise(value = sum(value)) %>%
+    group_by(scenario, region, year, transformation) %>%
+    mutate(ratio_enduse_in_trans = value / sum(value)) %>%
+    ungroup() %>%
+    filter(transformation %in% transf_sectors) %>%
+    select(-value, enduse_map = enduse, enduse = transformation)
+  
+  # Fix iron and steel, expand direct
+  ironsteel_inputs <- getQuery(prj, "inputs by tech") %>%
+    # filter(region == "China", year == "2050") %>% # TEMPORARY
+    filter(sector == "iron and steel",
+           str_detect(technology, "CCS")) %>%
+    # Get rid of electricity and scrap
+    filter(!(input %in% c("elect_td_ind", "scrap"))) %>%
+    # Fix input names
+    mutate(input = str_replace(input, "delivered coal", "coal"),
+           input = str_replace(input, "refined liquids industrial", "refined liquids"),
+           input = str_replace(input, "wholesale gas", "gas")) %>%
+    # Get percentage of input in total
+    group_by(scenario, region, year, sector, subsector, technology) %>%
+    mutate(ratio_input_in_tech = value / sum(value)) %>%
+    ungroup() %>%
+    select(scenario, region, year, technology, input, ratio_input_in_tech) 
+  
+  # Expand iron and steel from co2 sequestration
+  iron_steel_replace <- getQuery(prj, "CO2 sequestration by tech") %>%
+    # filter(region == "China", year == "2050") %>%
+    filter(sector == "iron and steel") %>%
+    left_join(ironsteel_inputs, by = c("scenario", "region", "year", "technology")) %>%
+    mutate(input = if_else(is.na(input), "crude oil", input),
+           ratio_input_in_tech = if_else(is.na(ratio_input_in_tech) & input == "crude oil", 
+                                         1, ratio_input_in_tech),
+           value = value * ratio_input_in_tech) %>%
+    select(-subsector, -ratio_input_in_tech, subsector = input)
+  
+  # Carbon sequestration by subsector
+  seq <- getQuery(prj, "CO2 sequestration by tech") %>%
+    # filter(region == "China", year == "2050") %>% # TEMPORARY
+    filter(sector != "iron and steel", year > 1990) %>%
+    bind_rows(iron_steel_replace) %>%
+    mutate(sector = if_else(str_detect(sector, "elec_"), "electricity", sector)) %>%
+    group_by(Units, scenario, region, sector, subsector, year) %>%
+    summarise(value = sum(value)) %>%
+    ungroup() 
+  
+  seq2 <- seq %>%
+    left_join(primary_map, by = "subsector") %>%
+    mutate(transformation = sector,
+           transformation = str_replace_all(transformation, 
+                                            "H2 central production",
+                                            "H2 enduse")) %>%
+    left_join(primary_in_trans, 
+              by = c("scenario", "region", "year", "primary" = "trans_map")) %>%
+    # If join occurred, enduse should be old transform,
+    # transform should be old primary
+    # primary should be primary_map
+    mutate(enduse = transformation,
+           transformation = if_else(!is.na(ratio_primary_in_trans) & !(transformation %in% transf_sectors), 
+                                    primary, transformation),
+           primary = if_else(!is.na(ratio_primary_in_trans), 
+                             primary_map, primary)) %>%
+    # Multiply value by ratio of primary in transformation
+    mutate(ratio_primary_in_trans = 
+             if_else(is.na(ratio_primary_in_trans), 1, ratio_primary_in_trans),
+           value = value * ratio_primary_in_trans) %>%
+    select(-primary_map, -ratio_primary_in_trans)
+  
+  # Split out enduses that are actually transformations
+  seq3 <- seq2 %>%
+    left_join(enduse_in_trans, by = c("scenario", "region", "year", "enduse")) %>%
+    # If match, replace enduse
+    mutate(enduse = if_else(!is.na(enduse_map), 
+                            enduse_map, enduse)) %>%
+    # Multiply value by ratio of enduse in transformation
+    mutate(ratio_enduse_in_trans = 
+             if_else(is.na(ratio_enduse_in_trans), 1, ratio_enduse_in_trans),
+           value = value * ratio_enduse_in_trans) %>%
+    select(-enduse_map, -ratio_enduse_in_trans, -sector, -subsector) %>%
+    mutate(value = value * 44/12,
+           Units = "MTCO2e",
+           ghg = "Captured CO2") %>%
+    # rewrite traditional oil to crude oil
+    mutate(direct = str_replace_all(primary, "traded unconventional oil", "crude oil"),
+           direct = str_replace_all(direct, "total biomass", "biomass")) %>%
+    group_by(scenario, region, direct, transformation, enduse, year, ghg, Units) %>%
+    summarise(value = sum(value)) %>%
+    ungroup()
+
+  if (WIDE_FORMAT){
+    seq3 <- seq3 %>%
+      arrange(year) %>%
+      pivot_wider(names_from = year, values_from = value) %>%
+      arrange(region, direct) 
+    
+    seq3[is.na(seq3)] <- 0
+  }
+  return(seq3)
+}
 
 
 

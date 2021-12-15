@@ -57,6 +57,13 @@ setwd(FOLDER_LOCATION)
 ###################  Fuel Tracing ###################
 fuel_tracing <- fuel_distributor(prj)
 
+###################  CO2 Sequestration ###################
+# Mapping from subsector to primary/direct
+primary_map <- read_csv("input/sequestration_primary_map.csv")
+
+sequestration <- co2_sequestration_distributor(prj, fuel_tracing, primary_map, WIDE_FORMAT)
+readr::write_csv(sequestration, str_replace(EMISSIONS_OUTPUT, ".csv", "_sequestration.csv"))
+
 ###################  Emission Inputs ###################
 #
 # Load all inputs

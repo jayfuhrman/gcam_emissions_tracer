@@ -1,0 +1,20 @@
+subsector,primary
+cement,limestone
+dac,atmospheric CO2
+refined liquids,refining
+biomass (conv CCS),biomass
+biomass (IGCC CCS),biomass
+coal (conv pul CCS),coal
+coal (IGCC CCS),coal
+gas (CC CCS),gas processing
+refined liquids (CC CCS),refining
+biomass,biomass
+coal,coal
+gas,gas processing
+gasCCS,gas processing
+biomass liquids,biomass
+coal to liquids,coal
+BLASTFUR,iron and steel
+EAF with DRI,iron and steel
+EAF with scrap,iron and steel
+crude oil,crude oil
