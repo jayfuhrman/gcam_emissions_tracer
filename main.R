@@ -4,11 +4,11 @@ DATABASE_LOCATION <- FOLDER_LOCATION
 
 DATABASE_FOLDER <- 'db'
 
-DATABASE_NAME <- 'database_basexdb'
+DATABASE_NAME <- 'exe_gcam_cwf_v26/database_basexdb'
 
 SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
 
-QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
+QUERY_RESULTS_LOCATION <- 'output/emissions_cwf_v26.dat'
 
 EMISSIONS_OUTPUT <- 'output/emissions-GCAM_CWF.csv'
 
@@ -62,7 +62,7 @@ fuel_tracing <- fuel_distributor(prj)
 primary_map <- read_csv("input/sequestration_primary_map.csv")
 
 sequestration <- co2_sequestration_distributor(prj, fuel_tracing, primary_map, WIDE_FORMAT)
-readr::write_csv(sequestration, str_replace(EMISSIONS_OUTPUT, ".csv", "_sequestration.csv"))
+#readr::write_csv(sequestration, str_replace(EMISSIONS_OUTPUT, ".csv", "_sequestration.csv"))
 
 ###################  Emission Inputs ###################
 #
@@ -96,7 +96,10 @@ sector_label <- readr::read_csv("input/sector_label.csv")
 land_aggregation <- readr::read_csv("input/aggregated_land.csv")
 
 ###################  Emission Calculation ###################
+
+
 all_emissions <- emissions(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_aggregation, WIDE_FORMAT)
+all_emissions <- bind_rows(all_emissions,sequestration)
 readr::write_csv(all_emissions, EMISSIONS_OUTPUT)
 
 ###################  Land Transfers ###################
