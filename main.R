@@ -1,20 +1,31 @@
-FOLDER_LOCATION <- 'C:/Users/fuhr472/OneDrive - PNNL/Documents/GitHub/cwf_emissions_tracer/'
+#FOLDER_LOCATION <- 'C:/Users/fuhr472/OneDrive - PNNL/Documents/GitHub/cwf_emissions_tracer/'
+FOLDER_LOCATION <- 'C:/Users/horo597/OneDrive - PNNL/Documents/cwf_emissions_tracer/'
 
-DATABASE_LOCATION <- FOLDER_LOCATION
-
-DATABASE_FOLDER <- 'db'
-
-DATABASE_NAME <- 'database_basexdb'
-
-SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
-
-QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
+RGCAM <- FALSE # True if using rgcam, false if using query file
 
 EMISSIONS_OUTPUT <- 'output/emissions-GCAM_CWF.csv'
 
 LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_CWF.csv'
 
 WIDE_FORMAT <- TRUE
+
+# SET THIS VARIABLES IF USING QUERY CSV OUTPUT
+if(!RGCAM){ 
+  QUERY_FILE <- "~/../Desktop/queryout-emisstracer.csv"
+}
+
+# SET THESE VARIABLES IF USING RGCAM
+if(RGCAM){
+  DATABASE_LOCATION <- FOLDER_LOCATION
+  
+  DATABASE_FOLDER <- 'db'
+  
+  DATABASE_NAME <- 'database_basexdb'
+  
+  SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
+  
+  QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
+}
 
 # The packages below are needed for the calculations
 # You can uncomment and run the following line if you need to install them:
@@ -31,29 +42,36 @@ setwd(FOLDER_LOCATION)
 source("functions.R")
 
 ###################  Getting Query Output ###################
-setwd(DATABASE_LOCATION)
-if (file.exists(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))){
-  print("Database already queried. Opening data file...")
-  prj <- rgcam::loadProject(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))
-  print("Data file opened.")
-} else {
-  print("Querying database...")
-  conn <- rgcam::localDBConn(DATABASE_FOLDER, DATABASE_NAME,maxMemory = '16g')
-  if(SCENARIO_NAME == "ALL"){
-    for (scenario in rgcam::listScenariosInDB(conn)$name){
-      prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), scenario,
+if(RGCAM){
+  setwd(DATABASE_LOCATION)
+  if (file.exists(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))){
+    print("Database already queried. Opening data file...")
+    prj <- rgcam::loadProject(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))
+    print("Data file opened.")
+  } else {
+    print("Querying database...")
+    conn <- rgcam::localDBConn(DATABASE_FOLDER, DATABASE_NAME,maxMemory = '16g')
+    if(SCENARIO_NAME == "ALL"){
+      for (scenario in rgcam::listScenariosInDB(conn)$name){
+        prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), scenario,
+                                  paste0(FOLDER_LOCATION, 'queries.xml'))
+      }
+      
+    } else {
+      prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), SCENARIO_NAME,
                                 paste0(FOLDER_LOCATION, 'queries.xml'))
     }
-
-  } else {
-    prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), SCENARIO_NAME,
-                              paste0(FOLDER_LOCATION, 'queries.xml'))
+    
+    print("Database queried.")
   }
-
-  print("Database queried.")
+  setwd(FOLDER_LOCATION)
 }
-setwd(FOLDER_LOCATION)
 
+if(!RGCAM){
+  prj <- query_splitter(QUERY_FILE)
+  print("Query file processed.")
+
+}
 ###################  Fuel Tracing ###################
 fuel_tracing <- fuel_distributor(prj)
 

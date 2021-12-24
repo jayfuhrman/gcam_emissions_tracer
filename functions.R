@@ -1360,5 +1360,52 @@ land_change_tracker <- function(prj, land_aggregation, wide = TRUE){
   
 }
 
-
-
+# Split apart queries into tibbles
+query_splitter <- function(query_file){
+  # Read in queries and save as rgcam-style list of tibbles
+  # This for loop divides up the query into individual queries, based on where "scenario" occurs in the query output
+  query_text <- readr::read_lines(query_file)
+  query_start <- grep("scenario", query_text)
+  query_names <- unique(query_text[query_start - 1])
+  
+  tibble_list <- list()
+  # Loop through for each query name 
+  for (name in query_names){
+    num <- which(query_text[query_start - 1] == name)
+    stopifnot(length(num) == 1)
+    query_pos <- query_start[num]
+    # If the query is not the last query in file, only read in until next query
+    if (num != length(query_start)){
+      next_query_pos <- query_start[num+1]
+      df <- read_query(query_file, skip = query_pos - 1, n_max = next_query_pos - query_pos - 2)
+      # Otherwise, read until end of file
+    }else{
+      df <- read_query(query_file, skip = query_pos - 1)
+    }
+    df <- df %>%
+      pivot_longer(cols = matches("[0-9]{4}"),
+                   names_to = "year") %>%
+      mutate(year = as.integer(year)) %>%
+      select(-matches("X([0-9]+)")) %>%
+      rename_with(tolower, -Units)
+    
+    # Need to split to get into rgcam formatting
+    df2 <- split(df, df$scenario)
+    
+    for (scenario in names(df2)){
+      tibble_list[[scenario]] [[name]] <- df2[[scenario]]
+    }
+    
+  }
+  return(tibble_list)
+}
+# Read queries quietly
+read_query <- function(...){
+  suppressMessages(readr::read_csv(...)) %>%
+    mutate(scenario = date_remover(scenario))
+}
+# Remove dates from queries
+date_remover <- function (x){
+  pos <- regexpr(",date", x)
+  ifelse(pos > -1L, substr(x, 1, pos - 1L), x)
+}
