@@ -1,16 +1,6 @@
-#FOLDER_LOCATION <- 'C:/Users/fuhr472/OneDrive - PNNL/Documents/GitHub/cwf_emissions_tracer/'
-FOLDER_LOCATION <- 'C:/Users/horo597/OneDrive - PNNL/Documents/cwf_emissions_tracer/'
+FOLDER_LOCATION <- 'C:/Users/fuhr472/OneDrive - PNNL/Documents/GitHub/cwf_emissions_tracer/'
 
 RGCAM <- FALSE # True if using rgcam, false if using query file
-DATABASE_LOCATION <- FOLDER_LOCATION
-
-DATABASE_FOLDER <- 'db'
-
-DATABASE_NAME <- 'exe_gcam_cwf_v26/database_basexdb'
-
-SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
-
-QUERY_RESULTS_LOCATION <- 'output/emissions_cwf_v26.dat'
 
 EMISSIONS_OUTPUT <- 'output/emissions-GCAM_CWF.csv'
 
@@ -29,11 +19,11 @@ if(RGCAM){
   
   DATABASE_FOLDER <- 'db'
   
-  DATABASE_NAME <- 'database_basexdb'
+  DATABASE_NAME <- 'exe_gcam_cwf_v26/database_basexdb'
   
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
   
-  QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
+  QUERY_RESULTS_LOCATION <- 'output/emissions_cwf_v26.dat'
 }
 
 # The packages below are needed for the calculations
