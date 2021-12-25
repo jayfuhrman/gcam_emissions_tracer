@@ -888,12 +888,15 @@ direct_aggregation <- function(all_emissions){
     mutate(direct = if_else(direct == 'traditional biomass','biomass',direct)) %>%
     mutate(direct = if_else(direct == 'unconventional oil','crude oil',direct)) %>%
     mutate(direct = if_else(direct %in% food_agriculture,'Food and agriculture',direct)) %>%
-    mutate(direct = if_else(ghg == 'LUC CO2','Land Use',direct)) %>%
+    mutate(direct = if_else(ghg == 'LUC CO2','LULUCF',direct)) %>%
     mutate(direct = if_else(ghg == 'CO2' & direct %in% c('coal','crude oil','natural gas') & value < 0,'biomass CCS',direct)) %>%
     mutate(direct = if_else(ghg == 'CO2' & direct == 'biomass' & value <= 0,'biomass CCS',direct)) %>%
     mutate(direct = if_else(ghg == 'CO2' & (direct == 'biomass CCS' | direct == 'biomass') & value >= 0,'natural gas',direct)) %>% #due to numerical precision some small amount of biomass CO2 emissions come out as small positive numbers (and vise versa for )
     mutate(transformation = if_else(transformation == 'H2 grid electrolysis','H2 production',transformation)) %>%
-    mutate(direct = if_else(enduse == 'UnmanagedLand','Fires and Deforestation',direct)) %>%
+    mutate(direct = if_else(enduse == 'UnmanagedLand','LULUCF',direct)) %>%
+    mutate(direct = if_else(enduse == 'Coal','coal',direct)) %>%
+    mutate(enduse = if_else(enduse == 'ces','direct air capture',enduse)) %>%
+    mutate(transformation = if_else(transformation == 'ces','direct air capture',transformation)) %>%
     group_by(scenario,region,year,direct,transformation,enduse,ghg,Units) %>%
     summarize(value = sum(value)) %>%
     ungroup() -> all_emissions
@@ -1100,10 +1103,24 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
            ghg = "Captured CO2") %>%
     # rewrite traditional oil to crude oil
     mutate(direct = str_replace_all(primary, "traded unconventional oil", "crude oil"),
-           direct = str_replace_all(direct, "total biomass", "biomass")) %>%
+           direct = str_replace_all(direct, "total biomass", "biomass"),
+           direct = if_else(direct == "atmospheric CO2","CO2 removal",direct),
+           enduse = if_else(enduse == "ces","direct air capture",enduse),
+           enduse = if_else(enduse == "process heat dac","direct air capture",enduse),
+           transformation = if_else(transformation == 'ces','direct air capture',transformation)) %>%
     group_by(scenario, region, direct, transformation, enduse, year, ghg, Units) %>%
     summarise(value = sum(value)) %>%
     ungroup()
+  
+  global <- seq3 %>%
+    group_by(scenario, year, direct, transformation, enduse, ghg, Units) %>%
+    summarise(value = sum(value)) %>%
+    ungroup() %>%
+    mutate(region = "Global")
+  
+  seq3 <- bind_rows(seq3, global) %>% 
+    filter(year >= 2005) %>%
+    mutate(value = if_else(is.na(value),0,value))
 
   if (WIDE_FORMAT){
     seq3 <- seq3 %>%
@@ -1254,7 +1271,6 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions <- final_fuel_nonCO2_disag(all_emissions) #disaggregate nonCO2 combustion emissions
   
   all_emissions <- direct_aggregation(all_emissions)
-
   
   global <- all_emissions %>%
     group_by(scenario, year, direct, transformation, enduse, ghg, Units) %>%
@@ -1268,17 +1284,19 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   
   original_emissions <- sum(filter(ghg, year > 1990)$value) + 
     sum(filter(LUC_emissions, year > 1990)$value)
-  print(paste0('original emissions: ',original_emissions))
+  #print(paste0('original emissions: ',original_emissions))
 
   calculated_emissions <- filter(all_emissions, region != "Global")$value %>% sum(na.rm = T)
-  print(paste0('calculated emissions: ',calculated_emissions))
+  #print(paste0('calculated emissions: ',calculated_emissions))
   
   
   if (round(original_emissions - calculated_emissions,0) != 0){
     print("Total emissions from 1990 to 2100 do NOT match.")
-    write.csv(ghg %>% filter(year > 1990),'original_ghg.csv')
-    write.csv(LUC_emissions %>% filter(year > 1990),'original_LUC.csv')
-    write.csv(filter(all_emissions, region != "Global"),'calculated_emissions.csv')
+    print("percent difference between raw GCAM output data and disaggregated emissions is:")
+    print(100*(original_emissions - calculated_emissions)/original_emissions)
+    #write.csv(ghg %>% filter(year > 1990),'original_ghg.csv')
+    #write.csv(LUC_emissions %>% filter(year > 1990),'original_LUC.csv')
+    #write.csv(filter(all_emissions, region != "Global"),'calculated_emissions.csv')
   } else {
     print("Total emissions from 1990 to 2100 match.")
   }
