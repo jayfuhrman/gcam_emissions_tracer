@@ -1,6 +1,6 @@
 # GCAM emissions tracer
 
-## Copyright (c) 2021, Jay Fuhrman, Russell Horowitz
+## Copyright (c) 2021, Jay Fuhrman & Russell Horowitz
 
 All rights reserved.
 
