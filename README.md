@@ -1,7 +1,6 @@
 # GCAM emissions tracer
-## R code to disaggregate GHG emissions and sequestration results from GCAM and attribute them to end-uses, transformation pathways, and direct sources
 
-Copyright (c) 2021, Jay Fuhrman, Russell Horowitz
+## Copyright (c) 2021, Jay Fuhrman, Russell Horowitz
 
 All rights reserved.
 
