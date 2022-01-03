@@ -1,4 +1,4 @@
-
+db/*
 db/database_basexdb/atv.basex
 db/database_basexdb/inf.basex
 db/database_basexdb/tbl.basex
@@ -14,3 +14,4 @@ output/exemplar queries/queryout_inputs_by_subsector_regionalized.csv
 output/exemplar queries/queryout_LUC_emissions_by_LUT_regionalized.csv
 output/exemplar queries/queryout_nonCO2_emissions_by_resource_production_regionalized.csv
 output/exemplar queries/queryout_nonCO2_emissions_by_subsector_regionalized.csv
+output/*

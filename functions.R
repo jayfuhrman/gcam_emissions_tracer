@@ -894,7 +894,7 @@ direct_aggregation <- function(all_emissions){
     mutate(direct = if_else(ghg == 'CO2' & (direct == 'biomass CCS' | direct == 'biomass') & value >= 0,'natural gas',direct)) %>% #due to numerical precision some small amount of biomass CO2 emissions come out as small positive numbers (and vise versa for )
     mutate(transformation = if_else(transformation == 'H2 grid electrolysis','H2 production',transformation)) %>%
     mutate(direct = if_else(enduse == 'UnmanagedLand','LULUCF',direct)) %>%
-    mutate(direct = if_else(enduse == 'Coal','coal',direct)) %>%
+    mutate(direct = if_else(direct == 'Coal','coal',direct)) %>%
     mutate(enduse = if_else(enduse == 'ces','direct air capture',enduse)) %>%
     mutate(transformation = if_else(transformation == 'ces','direct air capture',transformation)) %>%
     group_by(scenario,region,year,direct,transformation,enduse,ghg,Units) %>%
