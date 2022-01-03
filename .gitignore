@@ -15,3 +15,4 @@ output/exemplar queries/queryout_LUC_emissions_by_LUT_regionalized.csv
 output/exemplar queries/queryout_nonCO2_emissions_by_resource_production_regionalized.csv
 output/exemplar queries/queryout_nonCO2_emissions_by_subsector_regionalized.csv
 output/*
+*.dat
