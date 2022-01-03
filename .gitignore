@@ -16,3 +16,5 @@ output/exemplar queries/queryout_nonCO2_emissions_by_resource_production_regiona
 output/exemplar queries/queryout_nonCO2_emissions_by_subsector_regionalized.csv
 output/*
 *.dat
+output/emissions_CWF.dat
+*.dat

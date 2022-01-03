@@ -23,7 +23,7 @@ if(RGCAM){
   
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
   
-  QUERY_RESULTS_LOCATION <- 'output/emissions_ref.dat'
+  QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
 }
 
 # The packages below are needed for the calculations
