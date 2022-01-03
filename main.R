@@ -10,7 +10,7 @@ WIDE_FORMAT <- TRUE
 
 # SET THIS VARIABLES IF USING QUERY CSV OUTPUT
 if(!RGCAM){ 
-  QUERY_FILE <- "~/../Desktop/queryout-emisstracer.csv"
+  QUERY_FILE <- "queries/queryout-emisstracer.csv"
 }
 
 # SET THESE VARIABLES IF USING RGCAM
