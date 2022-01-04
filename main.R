@@ -1,4 +1,7 @@
+#local PC
 FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/Github/gcam_emissions_tracer/'
+#pic
+#FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/GCAM_EmissionsTracer/'
 
 RGCAM <- TRUE # True if using rgcam, false if using query file
 
@@ -23,7 +26,7 @@ if(RGCAM){
   
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
   
-  QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
+  QUERY_RESULTS_LOCATION <- 'output/GCAM_CWF_V2.6_RE2.dat'
 }
 
 # The packages below are needed for the calculations
