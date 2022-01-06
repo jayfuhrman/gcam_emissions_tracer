@@ -1,7 +1,8 @@
 #local PC
 FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/Github/gcam_emissions_tracer/'
+
 #pic
-#FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/GCAM_EmissionsTracer/'
+#FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/gcam_emissions_tracer/'
 
 RGCAM <- TRUE # True if using rgcam, false if using query file
 
@@ -13,7 +14,7 @@ WIDE_FORMAT <- TRUE
 
 # SET THIS VARIABLES IF USING QUERY CSV OUTPUT
 if(!RGCAM){ 
-  QUERY_FILE <- "queries/queryout-emisstracer.csv"
+  QUERY_FILE <- "output/queryout-emisstracer.csv"
 }
 
 # SET THESE VARIABLES IF USING RGCAM
@@ -22,11 +23,11 @@ if(RGCAM){
   
   DATABASE_FOLDER <- 'db'
   
-  DATABASE_NAME <- 'exe_gcam_cwf_v26/database_basexdb'
+  DATABASE_NAME <- 'database_basexdb'
   
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
   
-  QUERY_RESULTS_LOCATION <- 'output/GCAM_CWF_V2.6_RE2.dat'
+  QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
 }
 
 # The packages below are needed for the calculations

@@ -1,0 +1,67 @@
+enduse,CWF_Sector
+comm others,Buildings
+agricultural energy use,Industry
+cement,Industry
+comm cooling,Buildings
+Freight Rail,Transport
+industrial energy use,Industry
+Passenger Rail,Transport
+resid cooling,Buildings
+resid others,Buildings
+resid heating,Buildings
+industrial feedstocks,Industry
+comm heating,Buildings
+2W and 3W,Transport
+Bus,Transport
+Car,Transport
+Domestic Ship,Transport
+Heavy truck,Transport
+International Aviation,Transport
+International Ship,Transport
+Large Car and Truck,Transport
+Light truck,Transport
+Medium truck,Transport
+Mini Car,Transport
+construction,Industry
+construction energy use,Industry
+Domestic Aviation,Transport
+Beef,Agriculture
+Corn,Agriculture
+Dairy,Agriculture
+FiberCrop,Agriculture
+FodderGrass,Agriculture
+FodderHerb,Agriculture
+MiscCrop,Agriculture
+OilCrop,Agriculture
+OtherGrain,Agriculture
+PalmFruit,Agriculture
+Pork,Agriculture
+Poultry,Agriculture
+Rice,Agriculture
+RootTuber,Agriculture
+SheepGoat,Agriculture
+SugarCrop,Agriculture
+Wheat,Agriculture
+biomass,Land Use
+crops,Land Use
+forest,Land Use
+grassland,Land Use
+otherarable,Land Use
+other natural,Land Use
+pasture,Land Use
+shrubland,Land Use
+UnmanagedLand,Land Use
+urban,Land Use
+N fertilizer,Industry
+industrial processes,Industry
+urban processes,Buildings
+iron and steel,Industry
+mining energy use,Industry
+HSR,Transport
+unconventional oil production,Industry
+direct air capture,Tech CDR
+alumina,Industry
+aluminum,Industry
+chemical energy use,Industry
+chemical feedstocks,Industry
+construction feedstocks,Industry
