@@ -974,7 +974,6 @@ final_fuel_CO2_disag <- function(all_emissions){
     summarize(value = sum(value)) %>%
     ungroup() #%>% 
   
-  df <- lifecycle_CO2_emiss_phase_disag(df)
   return(df)
 }
 
@@ -1015,14 +1014,8 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
     filter(!(ghg %in% c('CH4','N2O') & direct == transformation & transformation == enduse)) -> all_other_emiss  #for mergeback
   
   
-  #temporary until we can query directly on the cluster
   nonCO2_emissions_by_tech <- rgcam::getQuery(prj,'nonCO2 emissions by tech')
-  
-  #nonCO2_emissions_by_tech <- read_csv('nonCO2_emissions_by_tech.csv') %>% 
-  #  pivot_longer(cols = '1990':'2100',names_to = 'year') %>%
-  #  mutate(scenario = gsub("(.*),.*", "\\1", scenario)) %>%
-  #  filter(sector != 'UnmanagedLand')
-  
+
   
   nonCO2_combustion_emissions_by_tech <- nonCO2_emissions_by_tech %>%
     filter(ghg %in% c('CH4','N2O')) %>%
@@ -1379,6 +1372,8 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions <- final_fuel_CO2_disag(all_emissions)
 
   all_emissions <- final_fuel_nonCO2_disag(all_emissions) #disaggregate nonCO2 combustion emissions
+  
+  all_emissions <- lifecycle_CO2_emiss_phase_disag(all_emissions)
   
   all_emissions <- direct_aggregation(all_emissions)
   
