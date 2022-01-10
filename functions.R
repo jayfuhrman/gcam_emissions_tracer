@@ -395,6 +395,96 @@ fuel_distributor <- function(prj){
   return(final_df)
 }
 
+
+lifecycle_CO2_emiss_phase_disag <- function(df){
+  
+  df %>%
+    mutate(phase = if_else(!(transformation %in% c('refining','gas processing','electricity')) & ghg == 'CO2','enduse',
+                           if_else(((transformation == 'electricity' | transformation == 'backup_electricity') & ghg == 'CO2'),'indirect',NA_character_))) -> df_for_disag
+  
+  df_for_bindback <- df_for_disag %>%
+    filter(!is.na(phase) | ghg != 'CO2')
+  
+  
+  
+  outputs_by_subsector <- rgcam::getQuery(prj, 'outputs by subsector')
+  inputs_by_subsector <- rgcam::getQuery(prj, 'inputs by subsector')
+  sequestration_by_tech <- rgcam::getQuery(prj, 'CO2 sequestration by tech')
+  
+  inputs_by_subsector %>%
+    filter(sector == 'refining' | sector == 'gas processing') %>%
+    rename(PrimaryFuelCO2Coef.name = input) %>%
+    left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
+    mutate(c_input = value * PrimaryFuelCO2Coef) %>%
+    select(-Units) %>%
+    filter(!(PrimaryFuelCO2Coef.name == 'elect_td_ind')) -> upstream_inputs_by_subsector
+  
+  
+  CO2_sequestration_by_tech %>%
+    filter(sector == 'refining') %>%
+    mutate(fuel = if_else(subsector == 'biomass liquids','biomass',
+                          if_else(subsector == 'coal to liquids','coal',NA_character_))) %>%
+    group_by(scenario,region,fuel,year,subsector) %>%
+    summarize(sum_seq = sum(value)) %>%
+    ungroup() %>%
+    mutate(sector = 'refining') -> refining_c_seq  
+  
+  upstream_inputs_by_subsector %>%
+    left_join(refining_c_seq,by = c('scenario','region','fuel','year','sector','subsector')) %>%
+    mutate(sum_seq = if_else(is.na(sum_seq),0,sum_seq),
+           upstream_c_emiss = c_input) %>%
+    group_by(scenario,region,sector,subsector,year,fuel) %>%
+    summarize(upstream_c_input = sum(upstream_c_emiss)) %>% 
+    ungroup() -> upstream_c_input
+  
+  outputs_by_subsector%>%
+    filter(sector == 'refining' | sector == 'gas processing') %>%
+    rename(PrimaryFuelCO2Coef.name = output) %>%
+    left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
+    mutate(c_output = value * PrimaryFuelCO2Coef,
+           c_output = if_else(is.na(c_output),0,c_output)) %>%
+    group_by(scenario,region,sector,year) %>%
+    summarize(c_output = sum(c_output)) %>%
+    ungroup() -> downstream_c_output
+  
+  
+  emiss_fracs_by_lifecycle_phase <- upstream_c_input %>%
+    left_join(downstream_c_output, by = c('scenario','region','sector','year')) %>%
+    group_by(scenario,region,sector,year) %>%
+    summarize(downstream_emiss_frac = c_output / sum(upstream_c_input)) %>%
+    ungroup() %>%
+    distinct(scenario,region,sector,year,downstream_emiss_frac) %>%
+    mutate(upstream_emiss_frac = 1-downstream_emiss_frac) %>%
+    rename(transformation = sector)
+  
+  df_for_further_processing <- df_for_disag %>%
+    filter(is.na(phase) & ghg == 'CO2')
+  
+  
+  df_downstream <- df_for_further_processing %>%
+    left_join(emiss_fracs_by_lifecycle_phase,by = c('scenario','region','transformation','year')) %>%
+    mutate(phase = 'enduse',
+           downstream_emiss_frac = if_else(direct == 'biomass',0,downstream_emiss_frac),
+           upstream_emiss_frac = if_else(direct == 'biomass',1,upstream_emiss_frac),
+           value = value * downstream_emiss_frac)
+  
+  df_upstream <-   df_for_further_processing %>%
+    left_join(emiss_fracs_by_lifecycle_phase,by = c('scenario','region','transformation','year')) %>%
+    mutate(phase = 'indirect',
+           downstream_emiss_frac = if_else(direct == 'biomass',0,downstream_emiss_frac),
+           upstream_emiss_frac = if_else(direct == 'biomass',1,upstream_emiss_frac),
+           value = value * upstream_emiss_frac)
+  
+  
+  df_lifecycle_disag <- bind_rows(df_upstream,df_downstream,df_for_bindback) %>%
+    select(-downstream_emiss_frac,-upstream_emiss_frac)
+  
+  print(sum(df_lifecycle_disag$value))
+  print(sum(df$value))
+  
+  return(df_lifecycle_disag)
+}
+
 final_fuel_CO2_disag <- function(all_emissions){
   
   sectors <- read_csv('input/sector_label.csv')
@@ -883,6 +973,8 @@ final_fuel_CO2_disag <- function(all_emissions){
     group_by(scenario,region,direct,transformation,enduse,year,ghg,Units) %>%
     summarize(value = sum(value)) %>%
     ungroup() #%>% 
+  
+  df <- lifecycle_CO2_emiss_phase_disag(df)
   return(df)
 }
 
@@ -1282,7 +1374,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     filter(year > 1990) %>%
     select(scenario, region, year, direct, transformation, enduse, ghg, value, Units)
   
-  #write.csv(all_emissions,'all_emissions.csv')
+  #write_csv(all_emissions,'all_emissions.csv')
   #final fuel processing
   all_emissions <- final_fuel_CO2_disag(all_emissions)
 
