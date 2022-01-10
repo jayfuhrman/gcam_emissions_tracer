@@ -395,8 +395,7 @@ fuel_distributor <- function(prj){
   return(final_df)
 }
 
-
-lifecycle_CO2_emiss_phase_disag <- function(df){
+lifecycle_ghg_emiss_phase_disag <- function(df){
   
   df %>%
     mutate(phase = if_else(!(transformation %in% c('refining','gas processing','electricity')) & ghg == 'CO2','enduse',
@@ -477,13 +476,29 @@ lifecycle_CO2_emiss_phase_disag <- function(df){
   
   
   df_lifecycle_disag <- bind_rows(df_upstream,df_downstream,df_for_bindback) %>%
-    select(-downstream_emiss_frac,-upstream_emiss_frac)
+    select(-downstream_emiss_frac,-upstream_emiss_frac) %>%
+    mutate(phase = if_else(ghg == 'CO2',phase,
+                           if_else(ghg %in% c('CH4_AGR','N2O_AGR','LUC CO2','CH4_AWB','N2O_AWB'),'indirect',NA_character_))) %>%
+    mutate(phase = if_else(!(ghg %in% c('CH4','N2O','CO2','CH4_AGR','N2O_AGR','LUC CO2','CH4_AWB','N2O_AWB')),'enduse',phase)) %>%
+    mutate(phase = if_else(ghg %in% c('CH4','N2O') & transformation == enduse,'enduse',
+                           if_else(ghg %in% c('CH4','N2O') & transformation != enduse,'indirect',phase)))
+  
+  
+  
+  
+  df <- df %>%
+    mutate(value = if_else(is.na(value),0,value))
+  
+  df_lifecycle_disag <- df_lifecycle_disag %>%
+    mutate(value = if_else(is.na(value),0,value))
+  
   
   print(sum(df_lifecycle_disag$value))
   print(sum(df$value))
   
   return(df_lifecycle_disag)
 }
+
 
 final_fuel_CO2_disag <- function(all_emissions){
   
@@ -997,7 +1012,7 @@ direct_aggregation <- function(all_emissions){
     mutate(direct = if_else(direct == 'Coal','coal',direct)) %>%
     mutate(enduse = if_else(enduse == 'ces','direct air capture',enduse)) %>%
     mutate(transformation = if_else(transformation == 'ces','direct air capture',transformation)) %>%
-    group_by(scenario,region,year,direct,transformation,enduse,ghg,Units) %>%
+    group_by(scenario,region,year,direct,transformation,enduse,ghg,Units,phase) %>%
     summarize(value = sum(value)) %>%
     ungroup() -> all_emissions
   return(all_emissions)
