@@ -404,11 +404,11 @@ lifecycle_ghg_emiss_phase_disag <- function(df){
   df_for_bindback <- df_for_disag %>%
     filter(!is.na(phase) | ghg != 'CO2')
   
-  
+  ccoef_mapping <- read_csv('input/ccoef_mapping.csv')
   
   outputs_by_subsector <- rgcam::getQuery(prj, 'outputs by subsector')
   inputs_by_subsector <- rgcam::getQuery(prj, 'inputs by subsector')
-  sequestration_by_tech <- rgcam::getQuery(prj, 'CO2 sequestration by tech')
+  CO2_sequestration_by_tech <- rgcam::getQuery(prj, 'CO2 sequestration by tech')
   
   inputs_by_subsector %>%
     filter(sector == 'refining' | sector == 'gas processing') %>%
