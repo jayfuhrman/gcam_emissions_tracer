@@ -481,7 +481,9 @@ lifecycle_ghg_emiss_phase_disag <- function(df){
                            if_else(ghg %in% c('CH4_AGR','N2O_AGR','LUC CO2','CH4_AWB','N2O_AWB'),'indirect',NA_character_))) %>%
     mutate(phase = if_else(!(ghg %in% c('CH4','N2O','CO2','CH4_AGR','N2O_AGR','LUC CO2','CH4_AWB','N2O_AWB')),'enduse',phase)) %>%
     mutate(phase = if_else(ghg %in% c('CH4','N2O') & transformation == enduse,'enduse',
-                           if_else(ghg %in% c('CH4','N2O') & transformation != enduse,'indirect',phase)))
+                           if_else(transformation != enduse & ghg != 'CO2','indirect',phase))) %>%
+    mutate(phase = if_else(transformation == 'H2 production','indirect',phase)) %>%
+    mutate(phase = if_else(ghg == 'CH4' & direct == 'coal','indirect',phase)) #assume combustion emissions from coal are negligible relative to coalbed methane
   
   
   
@@ -996,6 +998,7 @@ direct_aggregation <- function(all_emissions){
   non_energy <- c('limestone','electricity','other industrial processes','industrial processes','adipic acid','nitric acid','solvents','waste_incineration','wastewater treatment','comm cooling','resid cooling','urban processes')
   food_agriculture <- c('Wheat','Corn','SugarCrop','SheepGoat','Beef','Dairy','FiberCrop','FodderGrass','FodderHerb','MiscCrop','OilCrop','OtherGrain','PalmFruit','Pork','Poultry','Rice','RootTuber')
   
+  cwf_mapping <- read_csv('input/CWF-sector-mapping.csv')
   
   all_emissions %>%
     mutate(direct = if_else(direct %in% non_energy,'Non-energy',direct)) %>%
@@ -1012,9 +1015,14 @@ direct_aggregation <- function(all_emissions){
     mutate(direct = if_else(direct == 'Coal','coal',direct)) %>%
     mutate(enduse = if_else(enduse == 'ces','direct air capture',enduse)) %>%
     mutate(transformation = if_else(transformation == 'ces','direct air capture',transformation)) %>%
+    mutate(transformation = if_else(transformation == 'backup_electricity','electricity',transformation)) %>%
     group_by(scenario,region,year,direct,transformation,enduse,ghg,Units,phase) %>%
     summarize(value = sum(value)) %>%
-    ungroup() -> all_emissions
+    ungroup() %>%
+    mutate(transformation = if_else(direct == 'limestone','calcination',transformation),
+           direct = if_else(direct == 'limestone','Non-energy',direct),
+           ghg = if_else(ghg == 'Captured CO2' & enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg)) %>%
+    left_join(cwf_mapping,by = c('enduse')) -> all_emissions
   return(all_emissions)
 }
 
@@ -1388,7 +1396,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
 
   all_emissions <- final_fuel_nonCO2_disag(all_emissions) #disaggregate nonCO2 combustion emissions
   
-  all_emissions <- lifecycle_CO2_emiss_phase_disag(all_emissions)
+  all_emissions <- lifecycle_ghg_emiss_phase_disag(all_emissions)
   
   all_emissions <- direct_aggregation(all_emissions)
   
