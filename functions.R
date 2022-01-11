@@ -483,7 +483,8 @@ lifecycle_ghg_emiss_phase_disag <- function(df){
     mutate(phase = if_else(ghg %in% c('CH4','N2O') & transformation == enduse,'enduse',
                            if_else(transformation != enduse & ghg != 'CO2','indirect',phase))) %>%
     mutate(phase = if_else(transformation == 'H2 production','indirect',phase)) %>%
-    mutate(phase = if_else(ghg == 'CH4' & direct == 'coal','indirect',phase)) #assume combustion emissions from coal are negligible relative to coalbed methane
+    mutate(phase = if_else(ghg == 'CH4' & direct == 'coal','indirect',phase)) %>% #assume combustion emissions from coal are negligible relative to coalbed methane
+    mutate(phase = if_else(ghg != 'SF6' & transformation == 'electricity','indirect',phase)) 
   
   
   
@@ -1244,6 +1245,7 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     mutate(value = if_else(is.na(value),0,value)) %>%
     mutate(phase = if_else(transformation %in% c('electricity','H2 enduse','gas processing','refining'),'indirect','enduse')) %>%
     mutate(ghg = if_else(enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg)) %>%
+    mutate(transformation = if_else(transformation == 'H2 enduse','H2 production',transformation)) %>%
     left_join(cwf_mapping,by = c('enduse'))
 
   if (WIDE_FORMAT){
