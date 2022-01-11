@@ -1237,9 +1237,14 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     ungroup() %>%
     mutate(region = "Global")
   
+  cwf_mapping <- read_csv('input/CWF-sector-mapping.csv')
+  
   seq3 <- bind_rows(seq3, global) %>% 
     filter(year >= 2005) %>%
-    mutate(value = if_else(is.na(value),0,value))
+    mutate(value = if_else(is.na(value),0,value)) %>%
+    mutate(phase = if_else(transformation %in% c('electricity','H2 enduse','gas processing','refining'),'indirect','enduse')) %>%
+    mutate(ghg = if_else(enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg)) %>%
+    left_join(cwf_mapping,by = c('enduse'))
 
   if (WIDE_FORMAT){
     seq3 <- seq3 %>%
@@ -1401,7 +1406,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions <- direct_aggregation(all_emissions)
   
   global <- all_emissions %>%
-    group_by(scenario, year, direct, transformation, enduse, ghg, Units) %>%
+    group_by(scenario, year, direct, transformation, enduse, ghg, Units, phase, CWF_Sector) %>%
     summarise(value = sum(value)) %>%
     ungroup() %>%
     mutate(region = "Global")

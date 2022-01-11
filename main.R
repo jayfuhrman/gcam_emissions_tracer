@@ -121,6 +121,7 @@ land_aggregation <- readr::read_csv("input/aggregated_land.csv")
 
 all_emissions <- emissions(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_aggregation, WIDE_FORMAT)
 all_emissions <- bind_rows(all_emissions,sequestration)
+
 readr::write_csv(all_emissions, EMISSIONS_OUTPUT)
 
 ###################  Land Transfers ###################
