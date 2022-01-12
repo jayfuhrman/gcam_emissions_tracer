@@ -1010,13 +1010,15 @@ direct_aggregation <- function(all_emissions){
     mutate(enduse = if_else(enduse == 'ces','direct air capture',enduse)) %>%
     mutate(transformation = if_else(transformation == 'ces','direct air capture',transformation)) %>%
     mutate(transformation = if_else(transformation == 'backup_electricity','electricity',transformation)) %>%
+    mutate(transformation = if_else(direct == 'limestone','calcination',transformation),
+           direct = if_else(direct == 'limestone','Non-energy',direct),
+           ghg = if_else(ghg == 'Captured CO2' & enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg),
+           phase = if_else(direct == 'biomass CCS' & phase == 'enduse' & ghg == 'CO2' & transformation %in% c('gas processing','refining','H2 production'),'midstream',phase)) %>%
     group_by(scenario,region,year,direct,transformation,enduse,ghg,Units,phase) %>%
     summarize(value = sum(value)) %>%
     ungroup() %>%
-    mutate(transformation = if_else(direct == 'limestone','calcination',transformation),
-           direct = if_else(direct == 'limestone','Non-energy',direct),
-           ghg = if_else(ghg == 'Captured CO2' & enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg)) %>%
     left_join(cwf_mapping,by = c('enduse')) -> all_emissions
+  
   return(all_emissions)
 }
 
@@ -1254,7 +1256,9 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     mutate(value = if_else(is.na(value),0,value)) %>%
     mutate(phase = if_else(transformation %in% c('electricity','H2 enduse','gas processing','refining'),'midstream','enduse')) %>%
     mutate(ghg = if_else(enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg)) %>%
-    mutate(transformation = if_else(transformation == 'H2 enduse','H2 production',transformation)) %>%
+    mutate(transformation = if_else(transformation == 'H2 enduse','H2 production',transformation),
+           transformation = if_else(direct == 'limestone','calcination',transformation),
+           direct = if_else(direct == 'limestone','Non-energy',direct)) %>%
     left_join(cwf_mapping,by = c('enduse'))
 
   if (WIDE_FORMAT){
