@@ -1029,7 +1029,7 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
   all_emissions %>%
     mutate(phase = if_else(direct == transformation & transformation == enduse,'enduse',NA_character_)) -> all_emissions
   
-  write_csv(all_emissions,'preliminary_phase_definition.csv')
+  #write_csv(all_emissions,'preliminary_phase_definition.csv')
   
   all_emissions %>%
     filter(ghg %in% c('CH4','N2O') & direct == transformation & transformation == enduse) -> combustion_non_CO2_emiss
@@ -1039,7 +1039,7 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
     mutate(phase = if_else(ghg != 'CO2' & direct %in% c('biomass','coal','crude oil','natural gas','unconventional oil'),'resource production',
                            if_else(ghg != 'CO2' & direct %in% c('refining','electricity','H2 production'),'midstream',phase))) -> all_other_emiss  #for mergeback
   
-  write_csv(all_other_emiss,'all_other_emiss_non_CO2.csv')
+  #write_csv(all_other_emiss,'all_other_emiss_non_CO2.csv')
   
   
   nonCO2_emissions_by_tech <- rgcam::getQuery(prj,'nonCO2 emissions by tech')
@@ -1071,7 +1071,7 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
     select(-normfrac,-fuel) %>%
     mutate(phase = 'enduse') -> combustion_non_CO2_emiss_disag
   
-  write_csv(combustion_non_CO2_emiss_disag,'combustion_non_CO2_emiss_disag.csv')
+  #write_csv(combustion_non_CO2_emiss_disag,'combustion_non_CO2_emiss_disag.csv')
   
   
   other_emiss_transform_for_disag <- all_other_emiss %>%
@@ -1081,7 +1081,7 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
   all_other_emiss_no_transform_combustion <- all_other_emiss %>%
     filter(!(direct %in% c('H2 production','electricity','refining','district heat') & ghg %in% c('CH4','N2O')))
   
-  write_csv(all_other_emiss_no_transform_combustion,'all_other_emiss_no_transform_combustion.csv')
+  #write_csv(all_other_emiss_no_transform_combustion,'all_other_emiss_no_transform_combustion.csv')
   
   
   
