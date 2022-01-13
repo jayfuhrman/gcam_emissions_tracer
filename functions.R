@@ -906,7 +906,7 @@ final_fuel_CO2_disag <- function(all_emissions){
   ind_inputs_transform_for_disag <- ind_inputs_by_subsector_temp %>%
     filter(PrimaryFuelCO2Coef.name %in% transform_ind)
   
-  district_heat_coef <- 1.25
+  district_heat_coef <- 1.25 * 44 / 12  #district heating energy input coef + C to CO2 conversion
   
   ind_transform_disag <- ind_transform_en_inputs_norm %>% 
     select(-value,-subsector) %>%
