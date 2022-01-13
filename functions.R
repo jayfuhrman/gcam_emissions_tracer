@@ -1405,25 +1405,39 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
            Units = "MTCO2e") %>%
     select(-GWP, -type) 
   
-  # Combine all emissions and add global region
+  
   all_emissions <- bind_rows(primary, transformation, enduse, LUC_emissions) %>%
     filter(year > 1990) %>%
     select(scenario, region, year, direct, transformation, enduse, ghg, value, Units)
   
-  #write_csv(all_emissions,'all_emissions.csv')
-  #final fuel processing
+  all_emissions_rus <- all_emissions
+  
+  original_emissions <- sum(filter(ghg, year > 1990)$value) + 
+    sum(filter(LUC_emissions, year > 1990)$value)
+  
+  calculated_emissions_rus <- filter(all_emissions_rus, region != "Global")$value %>% sum(na.rm = T)
+  
+  if (round(original_emissions - calculated_emissions_rus,0) != 0){
+    print("Initial disaggregation pass: Total emissions from 1990 to 2100 do NOT match.")
+    print("percent difference between raw GCAM output data and initial disaggregation pass emissions is:")
+    print(100*(original_emissions - calculated_emissions_rus)/original_emissions)
+    
+  } else {
+    print("Inital disaggregation pass: Total emissions from 1990 to 2100 match.")
+  }
+  
+  
+  
+  
+  #write_csv(all_emissions_rus,'all_emissions.csv')
+  #final fuel processing - JF
   all_emissions1 <- final_fuel_CO2_disag(all_emissions)
-
-  all_emissions2 <- final_fuel_nonCO2_disag(all_emissions1) #disaggregate nonCO2 
-  
-  #write_csv(all_emissions2,'non_CO2_disag_w_lifecycle_for_N2O_CH4.csv')
-  
+  all_emissions2 <- final_fuel_nonCO2_disag(all_emissions1) 
   all_emissions3 <- lifecycle_CO2_emiss_phase_disag(all_emissions2)
-  
   all_emissions4 <- direct_aggregation(all_emissions3)
-  
   all_emissions <- all_emissions4
   
+  # Combine all emissions and add global region
   global <- all_emissions %>%
     group_by(scenario, year, direct, transformation, enduse, ghg, Units, phase, CWF_Sector) %>%
     summarise(value = sum(value)) %>%
@@ -1434,21 +1448,45 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     filter(year >= 2005) %>%
     mutate(value = if_else(is.na(value),0,value))
   
-  original_emissions <- sum(filter(ghg, year > 1990)$value) + 
-    sum(filter(LUC_emissions, year > 1990)$value)
-  #print(paste0('original emissions: ',original_emissions))
 
   calculated_emissions <- filter(all_emissions, region != "Global")$value %>% sum(na.rm = T)
-  #print(paste0('calculated emissions: ',calculated_emissions))
-  
   
   if (round(original_emissions - calculated_emissions,0) != 0){
     print("Total emissions from 1990 to 2100 do NOT match.")
-    print("percent difference between raw GCAM output data and disaggregated emissions is:")
+    print("percent difference between raw GCAM output data and fully disaggregated emissions is:")
     print(100*(original_emissions - calculated_emissions)/original_emissions)
-    #write.csv(ghg %>% filter(year > 1990),'original_ghg.csv')
-    #write.csv(LUC_emissions %>% filter(year > 1990),'original_LUC.csv')
-    #write.csv(filter(all_emissions, region != "Global"),'calculated_emissions.csv')
+    if (round(calculated_emissions_rus - calculated_emissions,0) != 0){
+      print("Sum of initial disaggregation does not equal sum of final disaggregation.  Check grouped output frames for debugging")
+      
+      initial_disag <- all_emissions_rus %>%
+        group_by(scenario,region,year,enduse,ghg,Units) %>%
+        summarize(initial_disag = sum(value))
+      
+      
+      final_disag <- all_emissions %>%
+        filter(region != 'Global') %>%
+        group_by(scenario,region,year,enduse,ghg,Units) %>%
+        summarize(final_disag = sum(value))
+      
+      
+      final_disag %>%
+        left_join(initial_disag, by = c('scenario','region','year','enduse','ghg')) -> final_leftjoin_init
+      
+      
+      initial_disag %>%
+        left_join(final_disag, by = c('scenario','region','year','enduse','ghg')) -> init_leftjoin_final
+      
+    
+      write_csv(initial_disag,'initial_disag.csv')
+      write_csv(final_disag,'final_disag.csv')
+      
+      write_csv(final_leftjoin_init,'final_left_join_init.csv')
+      write_csv(init_leftjoin_final,'init_left_join_final.csv')
+      
+    } else {
+      print("")
+    }
+
   } else {
     print("Total emissions from 1990 to 2100 match.")
   }
