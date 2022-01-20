@@ -1470,18 +1470,22 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
       
       
       final_disag %>%
-        left_join(initial_disag, by = c('scenario','region','year','enduse','ghg')) -> final_leftjoin_init
+        left_join(initial_disag, by = c('scenario','region','year','enduse','ghg','Units')) %>%
+        mutate(match = if_else(final_disag == initial_disag, TRUE,FALSE),
+               diff = abs(final_disag - initial_disag)) %>%
+        filter(diff >= 10^-6 & !is.na(initial_disag)) %>%
+        arrange(desc(diff)) -> final_leftjoin_init
       
       
       initial_disag %>%
-        left_join(final_disag, by = c('scenario','region','year','enduse','ghg')) -> init_leftjoin_final
+        left_join(final_disag, by = c('scenario','region','year','enduse','ghg','Units')) -> init_leftjoin_final
       
     
-      write_csv(initial_disag,'initial_disag.csv')
-      write_csv(final_disag,'final_disag.csv')
+      #write_csv(initial_disag,'initial_disag.csv')
+      #write_csv(final_disag,'final_disag.csv')
       
       write_csv(final_leftjoin_init,'final_left_join_init.csv')
-      write_csv(init_leftjoin_final,'init_left_join_final.csv')
+      #write_csv(init_leftjoin_final,'init_left_join_final.csv')
       
     } else {
       print("")
