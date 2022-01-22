@@ -891,9 +891,38 @@ final_fuel_CO2_disag <- function(all_emissions){
             en_frac = if_else(sum_val == 0 & value == 0, 0, en_frac)) %>%
     ungroup() %>%
     select(-sum_val) %>%
-    left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) 
+    left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name'))
   
+  ##NEW##
   
+  district_heating_norm <- inputs_by_subsector %>%
+    filter(sector == 'district heat') %>%
+    rename(PrimaryFuelCO2Coef.name = input,
+           transformation = sector) %>%
+    left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
+    mutate(fuel = if_else(PrimaryFuelCO2Coef.name == 'refined liquids industrial','refining',fuel),
+           PrimaryFuelCO2Coef = if_else(fuel == 'biomass',0,PrimaryFuelCO2Coef),
+           value = value * PrimaryFuelCO2Coef,
+           Units = 'MTC') %>%
+    group_by(scenario,region,year,transformation) %>%
+    mutate(emiss_frac = value/sum(value)) %>%
+    ungroup() %>%
+    select(-value,-Units,-subsector,-PrimaryFuelCO2Coef.name,-PrimaryFuelCO2Coef)
+  
+  district_heating_for_disag <- remaining_industry_CO2 %>%
+    filter(transformation == 'district heat')
+  
+  #write_csv(district_heating_norm,'district_heating_norm.csv')
+  #write_csv(district_heating_for_disag,'district_heating_for_disag.csv')
+  
+  district_heating_norm %>%
+    left_join(district_heating_for_disag %>% select(-direct), by = c('scenario','region','transformation','year')) %>%
+    rename(direct = fuel) %>%
+    mutate(value = value * emiss_frac) -> district_heat_disag
+  
+  ###NEW###
+
+  #write_csv(ind_transform_en_inputs_norm,'ind_transform_en_inputs_norm.csv')
   
   ind_inputs_by_subsector_temp <- inputs_by_subsector %>%
     filter(sector %in% remaining_industry_CO2$enduse,
@@ -922,9 +951,10 @@ final_fuel_CO2_disag <- function(all_emissions){
            c_emiss = c_emiss - c_seq) %>%
     rename(direct = fuel) %>%
     select(scenario,region,year,direct,transformation,enduse,c_emiss) %>%
-    rename(value = c_emiss)
+    rename(value = c_emiss) %>%
+    filter(transformation != 'district heat')
   
-  
+  #write_csv(ind_transform_disag,'ind_transform_disag.csv')
   
   ind_inputs_by_subsector_no_transform <- ind_inputs_by_subsector_temp %>%
     filter(!(PrimaryFuelCO2Coef.name %in% transform_ind)) %>%
@@ -960,7 +990,11 @@ final_fuel_CO2_disag <- function(all_emissions){
     select(-normfrac) %>% #add back iron and steel disag
     bind_rows(iron_steel_emiss_disag) -> disag_point_source_ind_CO2
   
-  remaining_industry_disag <- bind_rows(disag_point_source_ind_CO2,upstream_industrial_CO2,ind_transform_disag_final) %>%
+  #write_csv(disag_point_source_ind_CO2,'disag_point_source_ind_CO2.csv')
+  #write_csv(upstream_industrial_CO2,'upstream_industrial_CO2.csv')
+  #write_csv(ind_transform_disag_final,'ind_transform_disag_final.csv')
+  
+  remaining_industry_disag <- bind_rows(disag_point_source_ind_CO2,upstream_industrial_CO2,ind_transform_disag_final,district_heat_disag) %>%
     mutate(direct = if_else(direct == 'refining' & value > 0,'crude oil',
                             if_else(direct == 'refining' & value <= 0,'biomass',direct)),
            ghg = 'CO2',
