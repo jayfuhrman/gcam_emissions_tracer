@@ -1552,6 +1552,13 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     print("Total emissions from 1990 to 2100 do NOT match.")
     print("percent difference between raw GCAM output data and fully disaggregated emissions is:")
     print(100*(original_emissions - calculated_emissions)/original_emissions)
+    
+    print("Writing inputs by tech csv for debugging... ")
+    
+    inputs_by_tech <- rgcam::getQuery(prj,'inputs by tech') %>%
+      filter(Units %in% c('EJ','million pass-km','million ton-km'))
+    
+    write_csv(inputs_by_tech,'DEBUG_inputs_by_tech.csv')
     if (round(calculated_emissions_rus - calculated_emissions,0) != 0){
       print("Sum of initial disaggregation does not equal sum of final disaggregation.  Check grouped output frames for debugging")
       
@@ -1582,14 +1589,11 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
         filter(diff != 0) -> init_leftjoin_final
       
   
-      #write_csv(all_emissions_rus,'all_emissions_rus.csv')
+
       write_csv(final_leftjoin_init,'DEBUG_final_left_join_init.csv')
       write_csv(init_leftjoin_final,'DEBUG_init_left_join_final.csv')
       
-      inputs_by_tech <- rgcam::getQuery(prj,'inputs by tech') %>%
-        filter(Units %in% c('EJ','million pass-km','million ton-km'))
-      
-      write_csv(inputs_by_tech,'DEBUG_inputs_by_tech.csv')
+
       
       
     } else {
