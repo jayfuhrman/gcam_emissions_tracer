@@ -47,8 +47,9 @@ FodderHerb,enduse,FodderHerb
 Freight Rail,enduse,Freight Rail
 gas pipeline,transformation,gas processing
 gas processing,transformation,gas processing
-H2 central production,transformation,H2 enduse
-H2 forecourt production,transformation,H2 enduse
+H2 wholesale dispensing,transformation,H2 wholesale dispensing
+H2 central production,transformation,H2 central production
+H2 forecourt production,transformation,H2 forecourt production
 Heavy truck,enduse,Heavy truck
 industrial energy use,enduse,industrial energy use
 industrial feedstocks,enduse,industrial feedstocks
