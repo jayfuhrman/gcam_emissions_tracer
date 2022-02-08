@@ -1,6 +1,38 @@
 library(dplyr)
 library(tidyr)
 
+build_prj <- function(DATABASE_LOCATION,DATABASE_FOLDER,DATABASE_NAME = 'database_basexdb',SCENARIO_NAME,QUERY_RESULTS_LOCATION){
+  if(RGCAM){
+    setwd(DATABASE_LOCATION)
+    if (file.exists(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))){
+      print("Database already queried. Opening data file...")
+      print(QUERY_RESULTS_LOCATION)
+      prj <- rgcam::loadProject(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))
+      print("Data file opened.")
+    } else {
+      print("Querying database...")
+      conn <- rgcam::localDBConn(DATABASE_FOLDER, DATABASE_NAME,maxMemory = '16g')
+      if(SCENARIO_NAME == "ALL"){
+        for (scenario in rgcam::listScenariosInDB(conn)$name){
+          prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), scenario,
+                                    paste0(FOLDER_LOCATION, 'queries.xml'))
+        }
+        
+      } else {
+        prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), SCENARIO_NAME,
+                                  paste0(FOLDER_LOCATION, 'queries.xml'))
+      }
+      
+      print("Database queried.")
+    }
+    setwd(FOLDER_LOCATION)
+    return(prj)
+  }
+}
+
+
+
+
 # If ratio = 1 and input is not a primary input, 
 # replace sectors with input name with downstream sector name and type,
 # then delete downstream row
@@ -134,18 +166,15 @@ fuel_distributor <- function(prj){
     # Rewrite transportation subsector to sector
     dplyr::mutate(sector = if_else(grepl("trn_", sector), subsector, sector)) 
   
-  
   # Primary sectors are inputs, but don't have any inputs
   primary_sectors <- c(dplyr::setdiff(sectors$input, sectors$sector), 
                        "traded unconventional oil",
-                       "traded oil","traded coal","traded natural gas",
                        "total biomass")
   # But we only care about inputs that have associated emissions:
   # c("coal", "natural gas", "crude oil", "traditional biomass", "biomass", "unconventional oil")
   primary_remove <- setdiff(primary_sectors, 
                             c("coal", "natural gas", "crude oil", "traditional biomass", 
-                              "total biomass", "traded unconventional oil",
-                              "traded oil","traded natural gas","traded coal"))
+                              "total biomass", "traded unconventional oil"))
   
   # Enduse sectors have inputs, but don't act as inputs
   enduse_sectors <- dplyr::setdiff(sectors$sector, sectors$input)
@@ -205,16 +234,28 @@ fuel_distributor <- function(prj){
     filter(!(input %in% primary_remove)) %>%
     anti_join(single_use_sectors, by = c("scenario", "region", "sector", "year"))
   
+  
+  
   # Next, want to get rid of passthru sectors that only have 1 input
   #
   
   # Get ratio of sector in each input
-  in_ratio <- global_inputs %>% 
+  in_ratio <- global_inputs %>%
+    filter(!(sector %in% c('traded natural gas','traded coal','traded oil'))) %>% 
+    #filter out exported fossil fuels as these will ultimately be counted in the destination countries regional fuel markets
+    mutate(input = if_else(input == 'traded oil', 'crude oil', input),
+           input = if_else(input == 'traded natural gas', 'natural gas', input),
+           input = if_else(input == 'traded coal', 'coal', input)) %>%
+    #now mutate imported fossil fuels to their fuel names, assuming they are then consumed within that same region
     group_by(scenario, region, input, year) %>%
     mutate(ratio = value / sum(value)) %>%
     ungroup()  %>%
     # Remove nans - these sectors no longer needed
-    na.omit()
+    na.omit() %>%
+    group_by(scenario,region,input,sector,year,type) %>%
+    summarize(value = sum(value),
+              ratio = sum(ratio)) %>%
+    ungroup()
   
   write_csv(in_ratio,'1_in_ratio.csv')
   
@@ -253,6 +294,14 @@ fuel_distributor <- function(prj){
     group_modify(~upstream_replacer(.), keep=TRUE) %>%
     ungroup()
   
+  #after processing there remain a few years + regions + inputs for which both ratios = 1 
+  #in_replace_upstream_tmp <- in_replace_upstream %>% 
+  # filter(ratio >= 0.999999999 & ratio <= 1.000000001 & ratio2 == 1)
+  
+  
+  
+  
+  
   write_csv(in_replace_upstream,'3_in_replace_upstream.csv')
   
   print("Upstream passthru sectors replaced")
@@ -263,7 +312,7 @@ fuel_distributor <- function(prj){
     group_by(scenario, region, year) %>%
     group_modify(~passthru_remove(.), keep=TRUE) %>%
     ungroup()
-  
+    
   # need to redo ratio of sector in each input
   in_passthru_remove <- in_passthru_remove %>%
     group_by(scenario, region, input, year) %>%
@@ -284,10 +333,7 @@ fuel_distributor <- function(prj){
   
   # Old years (<= 2010) need to rename regional biomass to biomass
   in_passthru_remove <- in_passthru_remove %>%
-    mutate(input = if_else(input == "regional biomass", "total biomass", input),
-           input = if_else(input == 'traded oil',' crude oil',input),
-           input = if_else(input == 'traded coal', 'coal', input),
-           input = if_else(input == 'traded natural gas', 'natural gas', input)) 
+    mutate(input = if_else(input == "regional biomass", "total biomass", input)) 
 
   # sum things up
   in_passthru_remove <- in_passthru_remove %>%
@@ -357,7 +403,7 @@ fuel_distributor <- function(prj){
     select(scenario, region, year, primary, transformation = input, enduse, value) %>%
     bind_rows(gas_in_unconventional_oil) 
   
-  # Group electricity, refining, gas processing
+  # Group electricity, refining, gas processing, H2 production
   final_df <- final_df %>%
     mutate(transformation = if_else(transformation %in% c("elect_td_bld", "elect_td_ind","elect_td_trn"),
                                     "electricity", transformation),
@@ -388,28 +434,29 @@ fuel_distributor <- function(prj){
   # NOW NEED TO DO A CHECK TO MAKE SURE MATH ADDS UP FOR EACH FUEL/REGION
   original_totals <- in_ratio %>%
     filter(year >= 1990) %>%
-    filter(input %in% c("coal", "natural gas", "crude oil", "regional biomass", "traded unconventional oil",
-                        "traded oil","traded natural gas","traded coal")) %>%
+    filter(input %in% c("coal", "natural gas", "crude oil", "regional biomass", "traded unconventional oil")) %>%
     group_by(scenario, region, year, input) %>%
     summarise(value = sum(value)) %>%
     ungroup() %>%
-    mutate(input = if_else(input == "regional biomass", "total biomass", input),
-           input = if_else(input == 'traded oil',' crude oil',input),
-           input = if_else(input == 'traded coal', 'coal', input),
-           input = if_else(input == 'traded natural gas'),input)
+    mutate(input = if_else(input == "regional biomass", "total biomass", input))
+  
+  write_csv(original_totals,'original_totals.csv')
   
   new_totals <- final_df %>%
-    filter(primary %in% c("coal", "natural gas", "crude oil", "total biomass", "traded unconventional oil",
-                          "traded oil","traded natural gas","traded coal")) %>%
+    filter(primary %in% c("coal", "natural gas", "crude oil", "total biomass", "traded unconventional oil")) %>%
     group_by(scenario, region, year, primary) %>%
     summarise(value = sum(value)) %>%
     ungroup() %>%
     rename(input = primary)
   
+  write_csv(new_totals,'new_totals.csv')
+  
   comp <- original_totals %>%
     rename(original_total = value) %>%
     left_join(new_totals %>% rename(new_total = value), by = c("scenario", "region", "year", "input")) %>%
     mutate(diff = round(original_total - new_total, 3))
+  
+  
   
   if (any(is.na(comp))){
     print("NAs in fuel total comparison (likely due to historical oil)")
