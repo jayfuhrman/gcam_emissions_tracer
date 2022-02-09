@@ -61,7 +61,7 @@ downstream_replacer <- function(df, primary_sectors){
 upstream_replacer <- function(df){
   i <- 1
   while (i <= dim(df)[1]){
-    if (df$ratio[i] == 1 && df$ratio2[i] == 1 ){
+    if ( round(df$ratio[i],6) == 1 && round(df$ratio2[i],6) == 1 ){
       val_to_divide <- filter(df, input == df$input[i])$value
       
       df <- df %>%
@@ -293,14 +293,6 @@ fuel_distributor <- function(prj){
     group_by(scenario, region, year) %>%
     group_modify(~upstream_replacer(.), keep=TRUE) %>%
     ungroup()
-  
-  #after processing there remain a few years + regions + inputs for which both ratios = 1 
-  #in_replace_upstream_tmp <- in_replace_upstream %>% 
-  # filter(ratio >= 0.999999999 & ratio <= 1.000000001 & ratio2 == 1)
-  
-  
-  
-  
   
   write_csv(in_replace_upstream,'3_in_replace_upstream.csv')
   
