@@ -202,7 +202,7 @@ fuel_distributor <- function(prj){
     # Add in sector types
     left_join(sector_types, by = "sector")
   
-  write_csv(input_tracing,'input_tracing.csv')
+  #write_csv(input_tracing,'input_tracing.csv')
   
   print("Data ready for distribution.")
   
@@ -228,25 +228,43 @@ fuel_distributor <- function(prj){
            sector != "regional biomass") %>%
     ungroup() %>%
     semi_join(primary_remove_df, by = c("scenario", "region", "input", "sector", "year"))
-  
+
   # Remove unnecessary sectors
   global_inputs <- input_tracing %>%
     filter(!(input %in% primary_remove)) %>%
-    anti_join(single_use_sectors, by = c("scenario", "region", "sector", "year"))
+    anti_join(single_use_sectors, by = c("scenario", "region", "sector", "year"))  
   
   
+  exported_fuels_for_subtraction <- input %>%
+    filter(sector %in% c('traded coal','traded oil','traded natural gas')) %>%
+    separate(subsector, c('reg','fuel'), sep = ' traded') %>% #need the leading space character for matching by region later
+    mutate(value = -value, #this value will be subtracted from each region's fuel total as it is exported and not consumed there
+           region = reg,
+           type = 'passthru',
+           sector = if_else(input == 'coal', 'regional coal',
+                            if_else(input == 'natural gas', 'regional natural gas',
+                                    if_else(input == 'crude oil', 'regional oil', NA_character_)))) %>%
+    select(scenario,region,sector,year,input,value,type)
+  
+  #write_csv(input_tracing,'input_tracing.csv')
   
   # Next, want to get rid of passthru sectors that only have 1 input
   #
   
   # Get ratio of sector in each input
   in_ratio <- global_inputs %>%
-    filter(!(sector %in% c('traded natural gas','traded coal','traded oil'))) %>% 
+    
     #filter out exported fossil fuels as these will ultimately be counted in the destination countries regional fuel markets
+    filter(!(sector %in% c('traded natural gas','traded coal','traded oil'))) %>% 
+    
+    #now mutate imported fossil fuels to their fuel names, assuming they are then consumed within that same region
     mutate(input = if_else(input == 'traded oil', 'crude oil', input),
            input = if_else(input == 'traded natural gas', 'natural gas', input),
            input = if_else(input == 'traded coal', 'coal', input)) %>%
-    #now mutate imported fossil fuels to their fuel names, assuming they are then consumed within that same region
+    #bind_rows(exported_fuels_for_subtraction) %>%
+    #group_by(scenario,region,input,sector,year,type) %>%
+    #summarize(value = sum(value)) %>%
+    #ungroup() %>%
     group_by(scenario, region, input, year) %>%
     mutate(ratio = value / sum(value)) %>%
     ungroup()  %>%
@@ -257,7 +275,7 @@ fuel_distributor <- function(prj){
               ratio = sum(ratio)) %>%
     ungroup()
   
-  write_csv(in_ratio,'1_in_ratio.csv')
+  #write_csv(in_ratio,'1_in_ratio.csv')
   
   # If ratio = 1 and input is not a primary input, 
   # replace sectors with input name with downstream sector name and type,
@@ -284,7 +302,7 @@ fuel_distributor <- function(prj){
     # Remove nans - these sectors no longer matter
     na.omit()
   
-  write_csv(in_replace_downstream,'2_in_replace_downstream.csv')
+  #write_csv(in_replace_downstream,'2_in_replace_downstream.csv')
   
   # If both ratios = 1
   # replace inputs with sector name with upstream input name,
@@ -294,7 +312,7 @@ fuel_distributor <- function(prj){
     group_modify(~upstream_replacer(.), keep=TRUE) %>%
     ungroup()
   
-  write_csv(in_replace_upstream,'3_in_replace_upstream.csv')
+  #write_csv(in_replace_upstream,'3_in_replace_upstream.csv')
   
   print("Upstream passthru sectors replaced")
   
@@ -334,7 +352,7 @@ fuel_distributor <- function(prj){
     ungroup() 
   
   print("Remaining passthru sectors replaced")
-  write_csv(in_passthru_remove,'4_in_passthru_remove.csv')
+  #write_csv(in_passthru_remove,'4_in_passthru_remove.csv')
   
   # Now need to remove transformation sectors from inputs of other transformations
   # ASSUMING THAT REFINED LIQUIDS ARE UPSTREAM OF ELECTRICITY
@@ -349,7 +367,7 @@ fuel_distributor <- function(prj){
     group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
     ungroup() 
   
-  write_csv(in_primary,'5_in_primary.csv')
+  #write_csv(in_primary,'5_in_primary.csv')
   
   print("Transformation sectors removed as inputs to other transformations")
   
@@ -366,7 +384,7 @@ fuel_distributor <- function(prj){
     mutate(ratio_enduse_in_input = value / sum(value)) %>%
     ungroup()
   
-  write_csv(enduse_df,'enduse_df.csv')
+  #write_csv(enduse_df,'enduse_df.csv')
   
   # Get ratio of input in each transformation sector
   transform_df <- transform_df %>% 
@@ -376,7 +394,7 @@ fuel_distributor <- function(prj){
     rename(transformation = sector, primary = input) %>%
     select(-type)
   
-  write_csv(transform_df,'6_transform_df.csv')
+  #write_csv(transform_df,'6_transform_df.csv')
   
   # Add in natural gas for unconventional oil production
   gas_in_unconventional_oil <- in_ratio %>% 
@@ -432,7 +450,7 @@ fuel_distributor <- function(prj){
     ungroup() %>%
     mutate(input = if_else(input == "regional biomass", "total biomass", input))
   
-  write_csv(original_totals,'original_totals.csv')
+  #write_csv(original_totals,'original_totals.csv')
   
   new_totals <- final_df %>%
     filter(primary %in% c("coal", "natural gas", "crude oil", "total biomass", "traded unconventional oil")) %>%
@@ -441,7 +459,7 @@ fuel_distributor <- function(prj){
     ungroup() %>%
     rename(input = primary)
   
-  write_csv(new_totals,'new_totals.csv')
+  #write_csv(new_totals,'new_totals.csv')
   
   comp <- original_totals %>%
     rename(original_total = value) %>%
@@ -458,7 +476,7 @@ fuel_distributor <- function(prj){
     rows <- nrow(comp %>% filter(abs(diff) > 0))
     print(paste0("Fuel totals incorrect in ", rows, " rows."))
     write_csv(comp %>% filter(abs(diff) > 0),'fuel_totals_mismatched.csv')
-    write_csv(final_df,'7_final_df.csv')
+    write_csv(final_df,'fuel_tracing.csv')
   } else {
     print("All fuel totals correct.")
   }
@@ -785,7 +803,7 @@ final_fuel_CO2_disag <- function(all_emissions){
            ghg = 'CO2') %>%
     select(-emiss_no_bio) -> refining_emiss_by_fuel_no_bio_norm
   
-  write_csv(refining_emiss_by_fuel_no_bio_norm,'refining_emiss_by_fuel_no_bio_norm.csv')
+  #write_csv(refining_emiss_by_fuel_no_bio_norm,'refining_emiss_by_fuel_no_bio_norm.csv')
   
   
   refining_emiss_by_fuel_no_bio_norm %>%
@@ -796,7 +814,7 @@ final_fuel_CO2_disag <- function(all_emissions){
     select(-fuel,-normfrac) %>%
     bind_rows(trn_tailpipe_CO2_for_disag %>% filter(transformation == 'gas processing'))-> trn_tailpipe_CO2_disag
   
-  write_csv(trn_tailpipe_CO2_disag,'trn_tailpipe_CO2_disag.csv')
+  #write_csv(trn_tailpipe_CO2_disag,'trn_tailpipe_CO2_disag.csv')
   
   
   
@@ -809,7 +827,7 @@ final_fuel_CO2_disag <- function(all_emissions){
                           "H2 wholesale delivery",
                           "H2 wholesale dispensing") | ghg != 'CO2') -> all_emiss_no_elec_or_trn_no_H2_CO2 
   
-  write_csv(all_emiss_no_elec_or_trn_CO2,'all_emiss_no_elec_or_trn_CO2.csv')
+  #write_csv(all_emiss_no_elec_or_trn_CO2,'all_emiss_no_elec_or_trn_CO2.csv')
   
   all_emiss_no_elec_or_trn_CO2 %>%
     filter(direct %in% c('H2 enduse',
@@ -819,7 +837,7 @@ final_fuel_CO2_disag <- function(all_emissions){
                          "H2 wholesale delivery",
                          "H2 wholesale dispensing") & ghg == 'CO2') -> H2_CO2_emiss
   
-  write_csv(H2_CO2_emiss,'H2_CO2_emiss.csv')
+  #write_csv(H2_CO2_emiss,'H2_CO2_emiss.csv')
   
   inputs_by_subsector %>%
     filter(sector %in% c('H2 central production','H2 industrial','H2 wholesale dispensing','H2 forecourt production')) %>%
@@ -848,14 +866,14 @@ final_fuel_CO2_disag <- function(all_emissions){
   
   H2_inputs <- bind_rows(H2_inputs_no_elec)
   
-  write_csv(CO2_sequestration_by_tech,'CO2_sequestration_by_tech.csv') 
+  #write_csv(CO2_sequestration_by_tech,'CO2_sequestration_by_tech.csv') 
   
   CO2_sequestration_by_tech %>%
     filter(sector %in% c('H2 central production','H2 wholesale dispensing','H2 forecourt production')) %>%
     mutate(fuel = if_else(subsector == 'gas','natural gas',subsector)) %>%
     rename(c_seq = value)-> H2_sequestration
   
-  write_csv(H2_sequestration,'H2_sequestration.csv')
+  #write_csv(H2_sequestration,'H2_sequestration.csv')
   
   H2_sequestration %>%
     distinct(scenario,region,year) %>%
@@ -874,7 +892,7 @@ final_fuel_CO2_disag <- function(all_emissions){
     mutate(normfrac = emiss_no_bio / sum(emiss_no_bio)) %>%
     select(-Units) -> H2_inputs_joined
   
-  write_csv(H2_inputs_joined,'H2_inputs_joined.csv')
+  #write_csv(H2_inputs_joined,'H2_inputs_joined.csv')
   
   
   H2_inputs_joined %>%
@@ -905,7 +923,7 @@ final_fuel_CO2_disag <- function(all_emissions){
   #H2_CO2_emiss_disag <- bind_rows(H2_CO2_emiss_no_elec,H2_elec_CO2_disag)
   H2_CO2_emiss_disag <- bind_rows(H2_CO2_emiss_no_elec)
   
-  write_csv(H2_CO2_emiss_disag,'H2_CO2_emiss_disag.csv')
+  #write_csv(H2_CO2_emiss_disag,'H2_CO2_emiss_disag.csv')
   
   
   #deal with all remaining CO2 emissions
@@ -1014,7 +1032,7 @@ final_fuel_CO2_disag <- function(all_emissions){
     mutate(value = value * emiss_frac) -> district_heat_disag
   
 
-  write_csv(ind_transform_en_inputs_norm,'ind_transform_en_inputs_norm.csv')
+  #write_csv(ind_transform_en_inputs_norm,'ind_transform_en_inputs_norm.csv')
   
   ind_inputs_by_subsector_temp <- inputs_by_subsector %>%
     filter(sector %in% remaining_industry_CO2$enduse,
@@ -1027,7 +1045,7 @@ final_fuel_CO2_disag <- function(all_emissions){
   ind_inputs_transform_for_disag <- ind_inputs_by_subsector_temp %>%
     filter(PrimaryFuelCO2Coef.name %in% transform_ind)
   
-  write_csv(ind_inputs_transform_for_disag,'ind_inputs_transform_for_disag.csv')
+  #write_csv(ind_inputs_transform_for_disag,'ind_inputs_transform_for_disag.csv')
   
   process_heat_cement_disag <- ind_transform_en_inputs_norm %>% 
     select(-value,-subsector) %>%
@@ -1045,7 +1063,7 @@ final_fuel_CO2_disag <- function(all_emissions){
     rename(value = c_emiss) %>%
     filter(transformation == 'process heat cement')
   
-  write_csv(process_heat_cement_disag,'process_heat_cement_disag.csv')
+  #write_csv(process_heat_cement_disag,'process_heat_cement_disag.csv')
   
   
   ind_inputs_by_subsector_no_transform <- ind_inputs_by_subsector_temp %>%
@@ -1605,18 +1623,18 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   
   #final fuel processing - JF
   all_emissions1 <- final_fuel_CO2_disag(all_emissions)
-  write_csv(all_emissions1,'1_final_fuel_CO2_disag.csv')
+  #write_csv(all_emissions1,'1_final_fuel_CO2_disag.csv')
   
   all_emissions2 <- final_fuel_nonCO2_disag(all_emissions1) 
-  write_csv(all_emissions2,'2_final_fuel_nonCO2_disag.csv')
+  #write_csv(all_emissions2,'2_final_fuel_nonCO2_disag.csv')
   
   all_emissions3 <- lifecycle_CO2_emiss_phase_disag(all_emissions2)
-  write_csv(all_emissions3,'3_lifecycle_CO2_emiss_phase_disag.csv')
+  #write_csv(all_emissions3,'3_lifecycle_CO2_emiss_phase_disag.csv')
   
   all_emissions4 <- direct_aggregation(all_emissions3)
-  write_csv(all_emissions4,'4_direct_aggregation.csv')
+  #write_csv(all_emissions4,'4_direct_aggregation.csv')
   
-  all_emissions <- all_emissions1  #temporarily set to initial disaggregation step only to see where in processing errors occur
+  all_emissions <- all_emissions4  #temporarily set to initial disaggregation step only to see where in processing errors occur
   
   # Combine all emissions and add global region
   global <- all_emissions %>%
