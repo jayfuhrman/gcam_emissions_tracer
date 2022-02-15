@@ -1,5 +1,5 @@
 #local PC
-FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/Github/gcam_emissions_tracer/'
+FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/gcam_emissions_tracer/'
 
 #pic
 #FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/gcam_emissions_tracer/'
@@ -27,7 +27,7 @@ if(RGCAM){
   
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
   
-  QUERY_RESULTS_LOCATION <- 'output/emissions_CWF.dat'
+  QUERY_RESULTS_LOCATION <- 'output/NDC_continued_ambition.dat'
 }
 
 # The packages below are needed for the calculations
@@ -83,7 +83,6 @@ fuel_tracing <- fuel_distributor(prj)
 primary_map <- read_csv("input/sequestration_primary_map.csv")
 
 sequestration <- co2_sequestration_distributor(prj, fuel_tracing, primary_map, WIDE_FORMAT)
-#readr::write_csv(sequestration, str_replace(EMISSIONS_OUTPUT, ".csv", "_sequestration.csv"))
 
 ###################  Emission Inputs ###################
 #

@@ -420,9 +420,9 @@ fuel_distributor <- function(prj){
            transformation = if_else(transformation %in% c("refined liquids enduse", "refined liquids industrial"),
                                     "refining", transformation),
            transformation = if_else(transformation %in% c("delivered gas", "wholesale gas"),
-                                    "gas processing", transformation),
-           transformation = if_else(transformation %in% c('H2 industrial','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing'),
-                                    'H2 enduse',transformation)
+                                    "gas processing", transformation)#,
+           #transformation = if_else(transformation %in% c('H2 industrial','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing'),
+           #                         'H2 enduse',transformation)
     ) %>%
     group_by(scenario, region, year, primary, transformation, enduse) %>%
     summarise(value = sum(value)) %>%
@@ -1356,7 +1356,8 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
            transformation = if_else(!is.na(ratio_primary_in_trans) & !(transformation %in% transf_sectors), 
                                     primary, transformation),
            primary = if_else(!is.na(ratio_primary_in_trans), 
-                             primary_map, primary)) %>%
+                             primary_map, primary),
+           primary = if_else(transformation == 'process heat dac','natural gas',primary)) %>%
     # Multiply value by ratio of primary in transformation
     mutate(ratio_primary_in_trans = 
              if_else(is.na(ratio_primary_in_trans), 1, ratio_primary_in_trans),
@@ -1517,9 +1518,9 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     mutate(direct = transformation)
 
   
-  write_csv(fuel_tracing,'fuel_tracing.csv')
-  write_csv(ghg_rewrite,'ghg_rewrite.csv')
-  write_csv(transform_division,'transform_division.csv')
+  #write_csv(fuel_tracing,'fuel_tracing.csv')
+  #write_csv(ghg_rewrite,'ghg_rewrite.csv')
+  #write_csv(transform_division,'transform_division.csv')
   
   transformation <- ghg_rewrite %>%
     left_join(transform_division, by = c("scenario", "region", "year", "direct")) %>%
@@ -1634,7 +1635,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions4 <- direct_aggregation(all_emissions3)
   #write_csv(all_emissions4,'4_direct_aggregation.csv')
   
-  all_emissions <- all_emissions4  #temporarily set to initial disaggregation step only to see where in processing errors occur
+  all_emissions <- all_emissions1  #temporarily set to initial disaggregation step only to see where in processing errors occur
   
   # Combine all emissions and add global region
   global <- all_emissions %>%
