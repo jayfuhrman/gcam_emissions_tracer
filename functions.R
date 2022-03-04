@@ -181,7 +181,7 @@ fuel_distributor <- function(prj){
   
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
                               "elect_td_bld", "elect_td_ind", "elect_td_trn",
-                              "H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
+                              "H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
                               "refined liquids enduse", "refined liquids industrial",
                               "wholesale gas", "traditional biomass", "district heat")
   
@@ -358,7 +358,7 @@ fuel_distributor <- function(prj){
   # ASSUMING THAT REFINED LIQUIDS ARE UPSTREAM OF ELECTRICITY
   
   transform_sectors <- c("elect_td_bld", "elect_td_ind", "elect_td_trn",
-                         "H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
+                         "H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
                          "district heat", "refined liquids enduse", "refined liquids industrial",
                          "wholesale gas", "delivered gas")
   
