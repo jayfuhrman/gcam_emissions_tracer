@@ -57,6 +57,9 @@ H2 retail dispensing,transformation,H2 retail dispensing
 H2 wholesale delivery,transformation,H2 wholesale delivery
 H2 wholesale dispensing,transformation,H2 wholesale dispensing
 Heavy truck,enduse,Heavy truck
+desalinated water,enduse,desalinated water
+other industrial energy use,enduse,industrial energy use
+other industrial feedstocks,enduse,industrial feedstocks
 industrial energy use,enduse,industrial energy use
 industrial feedstocks,enduse,industrial feedstocks
 industrial processes,enduse,industrial processes
