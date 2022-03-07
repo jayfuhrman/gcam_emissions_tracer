@@ -825,7 +825,8 @@ final_fuel_CO2_disag <- function(all_emissions){
                           "H2 retail delivery", 
                           "H2 retail dispensing",
                           "H2 wholesale delivery",
-                          "H2 wholesale dispensing") | ghg != 'CO2') -> all_emiss_no_elec_or_trn_no_H2_CO2 
+                          "H2 wholesale dispensing",
+                          "H2 central production") | ghg != 'CO2') -> all_emiss_no_elec_or_trn_no_H2_CO2 
   
   #write_csv(all_emiss_no_elec_or_trn_CO2,'all_emiss_no_elec_or_trn_CO2.csv')
   
@@ -835,7 +836,8 @@ final_fuel_CO2_disag <- function(all_emissions){
                          "H2 retail delivery", 
                          "H2 retail dispensing",
                          "H2 wholesale delivery",
-                         "H2 wholesale dispensing") & ghg == 'CO2') -> H2_CO2_emiss
+                         "H2 wholesale dispensing",
+                         "H2 central production") & ghg == 'CO2') -> H2_CO2_emiss
   
   #write_csv(H2_CO2_emiss,'H2_CO2_emiss.csv')
   
@@ -1123,8 +1125,8 @@ final_fuel_CO2_disag <- function(all_emissions){
                   remaining_industry_disag) %>%
     mutate(transformation = if_else(direct == 'limestone','calcination',transformation)) %>%
     mutate(direct = if_else((direct == 'gas processing') & (ghg == 'CO2'),'natural gas',direct),#assign all direct gas processing CO2 emissions to natural gas since we're using emissions no bio query and bio constitutes a very small fraction of gas processing anyway
-           direct = if_else(direct == 'H2 enduse','H2 production',direct),
-           transformation = if_else(transformation == 'H2 enduse','H2 production',transformation)) %>%
+           direct = if_else(direct %in% c('H2 enduse','H2 central production','H2 wholesale dispensing'),'H2 production',direct),
+           transformation = if_else(transformation %in% c('H2 enduse','H2 central production','H2 wholesale dispensing'),'H2 production',transformation)) %>%
     group_by(scenario,region,direct,transformation,enduse,year,ghg,Units) %>%
     summarize(value = sum(value)) %>%
     ungroup() #%>% 
@@ -1516,11 +1518,6 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     summarise(ratio = sum(ratio_enduse_in_transformation)) %>%
     ungroup() %>%
     mutate(direct = transformation)
-
-  
-  #write_csv(fuel_tracing,'fuel_tracing.csv')
-  #write_csv(ghg_rewrite,'ghg_rewrite.csv')
-  #write_csv(transform_division,'transform_division.csv')
   
   transformation <- ghg_rewrite %>%
     left_join(transform_division, by = c("scenario", "region", "year", "direct")) %>%
@@ -1566,12 +1563,11 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions <- bind_rows(primary, transformation, enduse, LUC_emissions) %>%
     filter(year > 1990) %>%
     select(scenario, region, year, direct, transformation, enduse, ghg, value, Units)
-  
-  write_csv(primary,'primary.csv')
-  write_csv(transformation,'transformation.csv')
-  write_csv(enduse,'enduse.csv')
+
   
   all_emissions_rus <- all_emissions
+  
+  #write_csv(all_emissions_rus,'all_emissions_rus.csv')
   
   original_emissions <- sum(filter(ghg, year > 1990)$value) + 
     sum(filter(LUC_emissions, year > 1990)$value)
@@ -1582,6 +1578,24 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     print("Initial disaggregation pass: Total emissions from 1990 to 2100 do NOT match.")
     print("percent difference between raw GCAM output data and initial disaggregation pass emissions is:")
     print(100*(original_emissions - calculated_emissions_rus)/original_emissions)
+    
+    
+#    original_emissions %>%  
+#      left_join(sector_label, by = c('sector')) %>%
+#      rename(direct = rewrite) %>%
+#      group_by(scenario,region,ghg,year,direct) %>%
+#      summarize(value = sum(value)) %>%
+#      ungroup()
+    
+    
+#    joined_emiss <- all_emissions_rus %>%
+#      group_by(scenario,region,year,direct,ghg)%>%
+#      summarize(value = sum(value)) %>%
+#      ungroup() %>%
+#      rename(disag_val = value) %>%
+#      right_join(original_emiss %>% rename(orig_val = value),by = c('scenario','region','year','ghg','direct'))
+    
+#    write_csv(joined_emiss,'DEBUG_joined_initial_disag.csv')
     
     write_csv(all_emissions_rus,'DEBUG_initial_disag_emissions.csv')
     write_csv(filter(ghg, year > 1990),'DEBUG_original_emiss.csv')
@@ -1608,6 +1622,8 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
       mutate(diff = abs(initial_disag - original_emissions)) %>%
       arrange(desc(diff)) %>%
       filter(diff != 0)
+    
+    
   
     
     write_csv(original_left_join_initial_disag,'DEBUG_original_left_join_initial_disag.csv')
@@ -1618,13 +1634,8 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     print("Inital disaggregation pass: Total emissions from 1990 to 2100 match.")
   }
   
-  
-  
-  
-  
   #final fuel processing - JF
   all_emissions1 <- final_fuel_CO2_disag(all_emissions)
-  #write_csv(all_emissions1,'1_final_fuel_CO2_disag.csv')
   
   all_emissions2 <- final_fuel_nonCO2_disag(all_emissions1) 
   #write_csv(all_emissions2,'2_final_fuel_nonCO2_disag.csv')
@@ -1635,7 +1646,8 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions4 <- direct_aggregation(all_emissions3)
   #write_csv(all_emissions4,'4_direct_aggregation.csv')
   
-  all_emissions <- all_emissions1  #temporarily set to initial disaggregation step only to see where in processing errors occur
+  all_emissions <- all_emissions4  #temporarily set to initial disaggregation step only to see where in processing errors occur
+  #write_csv(all_emissions,'all_emissions.csv')
   
   # Combine all emissions and add global region
   global <- all_emissions %>%
@@ -1659,8 +1671,8 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     
     print("Writing inputs by tech csv for debugging... ")
     
-    inputs_by_tech <- rgcam::getQuery(prj,'inputs by tech') %>%
-      filter(Units %in% c('EJ','million pass-km','million ton-km'))
+#    inputs_by_tech <- rgcam::getQuery(prj,'inputs by tech') %>%
+#      filter(Units %in% c('EJ','million pass-km','million ton-km'))
     
     write_csv(inputs_by_tech,'DEBUG_inputs_by_tech.csv')
     if (round(calculated_emissions_rus - calculated_emissions,0) != 0){
