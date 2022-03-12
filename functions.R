@@ -181,8 +181,8 @@ fuel_distributor <- function(prj){
   
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
                               "elect_td_bld", "elect_td_ind", "elect_td_trn",
-                              "H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
-                              #"H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
+                              #"H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
+                              "H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
                               "refined liquids enduse", "refined liquids industrial",
                               "wholesale gas", "traditional biomass", "district heat")
   
@@ -359,8 +359,8 @@ fuel_distributor <- function(prj){
   # ASSUMING THAT REFINED LIQUIDS ARE UPSTREAM OF ELECTRICITY
   
   transform_sectors <- c("elect_td_bld", "elect_td_ind", "elect_td_trn",
-                         "H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
-                         #"H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
+                         #"H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
+                         "H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
                          "district heat", "refined liquids enduse", "refined liquids industrial",
                          "wholesale gas", "delivered gas")
   
@@ -422,10 +422,7 @@ fuel_distributor <- function(prj){
            transformation = if_else(transformation %in% c("refined liquids enduse", "refined liquids industrial"),
                                     "refining", transformation),
            transformation = if_else(transformation %in% c("delivered gas", "wholesale gas"),
-                                    "gas processing", transformation)#,
-           #transformation = if_else(transformation %in% c('H2 industrial','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing'),
-           #                         'H2 enduse',transformation)
-    ) %>%
+                                    "gas processing", transformation)) %>%
     group_by(scenario, region, year, primary, transformation, enduse) %>%
     summarise(value = sum(value)) %>%
     ungroup()
