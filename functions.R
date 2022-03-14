@@ -553,7 +553,7 @@ lifecycle_CO2_emiss_phase_disag <- function(df){
     left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
     mutate(c_input = value * PrimaryFuelCO2Coef) %>%
     select(-Units) %>%
-    filter(!(PrimaryFuelCO2Coef.name == 'elect_td_ind')) -> upstream_inputs_by_subsector
+    filter(!(PrimaryFuelCO2Coef.name %in% c('elect_td_ind','H2 industrial'))) -> upstream_inputs_by_subsector
   
   
   CO2_sequestration_by_tech %>%
@@ -614,7 +614,7 @@ lifecycle_CO2_emiss_phase_disag <- function(df){
   
   df_lifecycle_disag <- bind_rows(df_upstream,df_downstream,df_for_bindback) %>%
     select(-downstream_emiss_frac,-upstream_emiss_frac) %>%
-    mutate(phase = if_else(ghg == 'CO2' & transformation %in% c('district heat','H2 production','H2 enduse'),'midstream',phase))
+    mutate(phase = if_else(ghg == 'CO2' & transformation %in% c('district heat','H2 central production','H2 wholesale dispensing','H2 enduse'),'midstream',phase))
 
     
   
@@ -1696,7 +1696,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions4 <- direct_aggregation(all_emissions3)
   #write_csv(all_emissions4,'4_direct_aggregation.csv')
   
-  all_emissions <- all_emissions2  #temporarily set to initial disaggregation step only to see where in processing errors occur
+  all_emissions <- all_emissions4  #temporarily set to initial disaggregation step only to see where in processing errors occur
   #write_csv(all_emissions,'all_emissions.csv')
   
   # Combine all emissions and add global region
