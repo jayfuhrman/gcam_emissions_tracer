@@ -1,5 +1,5 @@
-library(dplyr)
-library(tidyr)
+#library(dplyr)
+#library(tidyr)
 
 build_prj <- function(DATABASE_LOCATION,DATABASE_FOLDER,DATABASE_NAME = 'database_basexdb',SCENARIO_NAME,QUERY_RESULTS_LOCATION){
   if(RGCAM){
@@ -369,7 +369,7 @@ fuel_distributor <- function(prj){
     group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
     ungroup() 
   
-  #write_csv(in_primary,'5_in_primary.csv')
+  write_csv(in_primary,'5_in_primary.csv')
   
   print("Transformation sectors removed as inputs to other transformations")
   
@@ -426,6 +426,54 @@ fuel_distributor <- function(prj){
     group_by(scenario, region, year, primary, transformation, enduse) %>%
     summarise(value = sum(value)) %>%
     ungroup()
+  
+  #Disentangle the H2 web...
+  
+  fuel_tracing <- final_df
+  
+  outputs_by_subsector <- rgcam::getQuery(prj,'outputs by subsector')
+
+  H2_forecourt_sectors <-  outputs_by_subsector %>%
+    filter(subsector == 'forecourt production') %>%
+    distinct(sector)
+  
+  H2_central_frac <- outputs_by_subsector %>%
+    filter(sector %in% H2_forecourt_sectors$sector) %>%
+    group_by(scenario,region,year,sector) %>%
+    mutate(central_production_frac = if_else(subsector == 'forecourt production',1-value/sum(value),value/sum(value))) %>%
+    ungroup() %>% 
+    rename(transformation = sector) %>%
+    select(scenario,region,year,transformation,central_production_frac) %>%
+    distinct(scenario,region,year,transformation,.keep_all = TRUE)
+  
+  fuel_tracing_fix_H2 <- fuel_tracing %>%
+    filter(str_detect(transformation,'H2')) %>%
+    mutate(transformation = if_else(transformation == 'H2 retail dispensing','H2 wholesale dispensing',transformation))
+  
+  fuel_tracing_fix_H2_wholesale_dispensing <- fuel_tracing_fix_H2 %>%
+    filter(transformation == 'H2 wholesale dispensing') %>%
+    left_join(H2_central_frac,by = c('scenario','region','year','transformation'))
+  
+  fuel_tracing_wholesale_dispensing_forecourt <- fuel_tracing_fix_H2_wholesale_dispensing %>%
+    mutate(value = value * (1-central_production_frac)) %>%
+    select(-central_production_frac)
+  
+  fuel_tracing_wholesale_dispensing_central <- fuel_tracing_fix_H2_wholesale_dispensing %>%
+    mutate(value = value * central_production_frac,
+           transformation = 'H2 central production') %>%
+    select(-central_production_frac)
+  
+  fuel_tracing_central <- fuel_tracing_fix_H2 %>%
+    filter(transformation %in% c('H2 industrial','H2 retail delivery')) %>%
+    mutate(transformation = 'H2 central production')
+  
+  fuel_tracing_FIXED_H2 <- bind_rows(fuel_tracing_wholesale_dispensing_central,fuel_tracing_wholesale_dispensing_forecourt,fuel_tracing_central)
+  
+  fuel_tracing_no_H2 <- fuel_tracing %>%
+    filter(!str_detect(transformation,'H2'))
+  
+  final_df <- bind_rows(fuel_tracing_no_H2,fuel_tracing_FIXED_H2)
+  
   
   
   final_df <- final_df %>%
@@ -1509,6 +1557,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
            enduse = direct) %>%
     select(-type)
   
+  
   # Transformation sectors need to be distributed to enduse
   transform_division <- fuel_tracing %>%
     mutate(ratio_enduse_in_transformation = if_else(
@@ -1517,6 +1566,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     summarise(ratio = sum(ratio_enduse_in_transformation)) %>%
     ungroup() %>%
     mutate(direct = transformation)
+  
   
   transformation <- ghg_rewrite %>%
     left_join(transform_division, by = c("scenario", "region", "year", "direct")) %>%
@@ -1566,7 +1616,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   
   all_emissions_rus <- all_emissions
   
-  #write_csv(all_emissions_rus,'all_emissions_rus.csv')
+  write_csv(all_emissions_rus,'all_emissions_rus.csv')
   
   original_emissions <- sum(filter(ghg, year > 1990)$value) + 
     sum(filter(LUC_emissions, year > 1990)$value)
@@ -1646,7 +1696,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   all_emissions4 <- direct_aggregation(all_emissions3)
   #write_csv(all_emissions4,'4_direct_aggregation.csv')
   
-  all_emissions <- all_emissions1  #temporarily set to initial disaggregation step only to see where in processing errors occur
+  all_emissions <- all_emissions2  #temporarily set to initial disaggregation step only to see where in processing errors occur
   #write_csv(all_emissions,'all_emissions.csv')
   
   # Combine all emissions and add global region
