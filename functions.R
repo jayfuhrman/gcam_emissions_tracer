@@ -1392,13 +1392,13 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     filter(!(input %in% c("elect_td_ind", "scrap","H2 industrial"))) %>%
     # Fix input names
     mutate(input = str_replace(input, "delivered coal", "coal"),
-           input = str_replace(input, "refined liquids industrial", "refined liquids"),
            input = str_replace(input, "wholesale gas", "natural gas")) %>%
     left_join(read_csv('input/ccoef_mapping.csv') %>%
                 rename(input = PrimaryFuelCO2Coef.name),by = c('input')) %>%
     mutate(value = value * PrimaryFuelCO2Coef,
            value = if_else(is.na(value),0,value)) %>%
     # Get percentage of carbon input in total
+    # The implicit assumption here is that the each fuel's sequestered carbon will be proportional to its contribution to overall fuel carbon input
     group_by(scenario, region, year, sector, subsector, technology) %>%
     mutate(ratio_input_in_tech = value / sum(value),
            ratio_input_in_tech = if_else(value == 0 & sum(value) == 0,
@@ -1412,6 +1412,7 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     filter(sector == "iron and steel") %>%
     left_join(ironsteel_inputs, by = c("scenario", "region", "year", "technology")) %>%
     mutate(input = if_else(is.na(input), "crude oil", input),
+           input = if_else(input == 'refined liquids industrial','crude oil',input),
            ratio_input_in_tech = if_else(is.na(ratio_input_in_tech) & input == "crude oil", 
                                          1, ratio_input_in_tech),
            value = value * ratio_input_in_tech) %>%
