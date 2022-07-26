@@ -88,6 +88,7 @@ passthru_remove <- function(df, remaining_passthru = NULL){
   for (passthru in remaining_passthru){
     new_sectors <- df %>%
       filter(input == passthru) %>%
+      mutate(ratio = value / sum(value)) %>%
       select(scenario, region, sector, year, type, ratio)
     
     to_expand <- df %>%
@@ -97,9 +98,10 @@ passthru_remove <- function(df, remaining_passthru = NULL){
       mutate(value = value * ratio)
     
     df <- df %>% 
-      filter(input != passthru,
+      filter(input != passthru | input == 'total biomass',
              sector != passthru) %>%
       bind_rows(to_expand)
+    
   }
   
   
@@ -194,12 +196,16 @@ energy_water_distributor <- function(prj){
   # Enduse sectors have inputs, but don't act as inputs
   enduse_sectors <- dplyr::setdiff(sectors$sector, sectors$input)
   
+  water_td_transform <- sectors  %>%
+    filter(str_detect(sector,"water_td_")) %>%
+    distinct(sector)
+  
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
                               "elect_td_bld", "elect_td_ind", "elect_td_trn",
                               #"H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
                               "H2 retail delivery","H2 retail dispensing","H2 industrial","H2 wholesale dispensing","H2 enduse",
                               "refined liquids enduse", "refined liquids industrial",
-                              "wholesale gas", "traditional biomass", "district heat")
+                              "wholesale gas", "traditional biomass", "district heat",water_td_transform$sector)
   
   # All other sectors are pass-thru sectors
   passthru_sectors <- dplyr::setdiff(sectors$sector, 
@@ -314,9 +320,7 @@ energy_water_distributor <- function(prj){
   in_replace_upstream <- in_replace_downstream %>%
     group_by(scenario, region, year) %>%
     group_modify(~upstream_replacer(.), keep=TRUE) %>%
-    ungroup() %>% 
-    mutate(sector = if_else(sector == 'total biomass' & Units == 'km^3','biomass water',sector))
-  #temporarily change name of biomass irrigation water to avoid messing up total biomass energy use
+    ungroup() 
   
   print("Upstream passthru sectors replaced")
   
@@ -351,7 +355,7 @@ energy_water_distributor <- function(prj){
 
   # sum things up
   in_passthru_remove <- in_passthru_remove %>%
-    group_by(scenario, region, input, sector, type, year) %>%
+    group_by(scenario, region, input, sector, type, year, Units) %>%
     summarise(value = sum(value)) %>%
     ungroup() 
 
@@ -444,7 +448,7 @@ energy_water_distributor <- function(prj){
   original_totals <- in_ratio %>%
     filter(year >= 1990) %>%
     filter(input %in% c("coal", "natural gas", "crude oil", "regional biomass", "traded unconventional oil",
-                        "global solar resource","distributed_solar","geothermal","onshore wind resource","offshore wind resource") ) %>%
+                        "global solar resource","distributed_solar","geothermal","onshore wind resource","offshore wind resource","biophysical water consumption") ) %>%
     group_by(scenario, region, year, input) %>%
     summarise(value = sum(value)) %>%
     ungroup() %>%
@@ -452,7 +456,7 @@ energy_water_distributor <- function(prj){
   
   new_totals <- final_df %>%
     filter(primary %in% c("coal", "natural gas", "crude oil", "total biomass", "traded unconventional oil",
-                          "global solar resource","distributed_solar","geothermal","onshore wind resource","offshore wind resource") ) %>%
+                          "global solar resource","distributed_solar","geothermal","onshore wind resource","offshore wind resource","biophysical water consumption") ) %>%
     group_by(scenario, region, year, primary) %>%
     summarise(value = sum(value)) %>%
     ungroup() %>%
