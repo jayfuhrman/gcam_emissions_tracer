@@ -689,6 +689,7 @@ fuel_distributor <- function(prj){
                          "delivered gas","wholesale gas")
   
   in_primary <- in_passthru_remove %>%
+    mutate(Units = 'EJ') %>%
     group_by(scenario, region, year) %>%
     group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
     ungroup() 
