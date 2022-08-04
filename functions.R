@@ -120,19 +120,17 @@ transform_distributer <- function(df, transform_sectors){
         filter(sector == transform,
                input == inp)
       
-      
-      input_df <- df %>%
-        filter(sector == inp,
-               !(input %in% transform_sectors))
-      
       tmp <- df %>%
         filter(input == inp)
       
       total <- sum(tmp$value)
       
-      input_df <- input_df %>%
+      
+      input_df <- df %>%
+        filter(sector == inp,
+               !(input %in% transform_sectors)) %>%
         mutate(ratio = value / total) %>%
-        select(scenario, region, input, year, ratio)
+        select(scenario, region, input, year, ratio, Units)
       
       
       to_expand <- sector_input %>%
@@ -146,16 +144,16 @@ transform_distributer <- function(df, transform_sectors){
       subtract_from_upstream <- df %>%
         filter(sector == inp,
                !(input %in% transform_sectors)) %>%
-        left_join(to_expand, by = c("scenario", "region", "input", "year")) %>%
+        left_join(to_expand, by = c("scenario", "region", "input", "year", "Units")) %>%
         mutate(value = value.x - value.y) %>%
-        select(scenario, region, year, input, sector = sector.x, type = type.x, value)
+        select(scenario, region, year, input, sector = sector.x, type = type.x, value, Units)
       
       df <- df %>% 
         filter(!(input == inp & sector == transform)) %>%
         bind_rows(to_expand) %>%
         filter(!(sector == inp & !(input %in% transform_sectors))) %>%
         bind_rows(subtract_from_upstream) %>%
-        group_by(scenario, region, input, sector, type, year) %>%
+        group_by(scenario, region, input, sector, type, year, Units) %>%
         summarise(value = sum(value)) %>%
         ungroup()
       
@@ -198,6 +196,7 @@ energy_water_distributor <- function(prj){
   
   water_td_transform <- sectors  %>%
     filter(str_detect(sector,"water_td_")) %>%
+    
     distinct(sector)
   
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
@@ -205,7 +204,7 @@ energy_water_distributor <- function(prj){
                               #"H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
                               "H2 retail delivery","H2 retail dispensing","H2 industrial","H2 wholesale dispensing","H2 enduse",
                               "refined liquids enduse", "refined liquids industrial",
-                              "wholesale gas", "traditional biomass", "district heat",water_td_transform$sector)
+                              "wholesale gas", "traditional biomass", "district heat")
   
   # All other sectors are pass-thru sectors
   passthru_sectors <- dplyr::setdiff(sectors$sector, 
@@ -358,24 +357,74 @@ energy_water_distributor <- function(prj){
     group_by(scenario, region, input, sector, type, year, Units) %>%
     summarise(value = sum(value)) %>%
     ungroup() 
-
   
+  #elect_td_ind is somewhat unique in that it functions both as a transformation sector for energy, as well as a 
+  #passthru sector for irrigation.  After removing passthru sectors above we are left in effect with elect_td_ind 
+  #consuming itself, which represents electricity use for irrigation. 
+  #Therefore we adjust upwards the amount of electricity for all sectors by the amount of electricity used to pump water, 
+  #and drop any remaining rows where sectors consume themselves as inputs
+  energy_for_water <- in_passthru_remove %>%
+    filter(input == sector) %>%
+    select(-sector,-Units,-value,-type) %>%
+    left_join(in_passthru_remove, by = c("scenario","region","year","input")) %>%
+    group_by(scenario,region,year,input,Units) %>%
+    mutate(total_input = sum(value),
+           own_use = sum(value[which(input==sector)])/total_input,
+           value = value * 1 + own_use) %>%
+    filter(!(sector == input)) %>%
+    ungroup() %>%
+    select(-total_input,-own_use)
+  
+  
+  in_passthru_remove <- in_passthru_remove %>%
+    filter(!(input %in% energy_for_water$input)) %>%
+    bind_rows(energy_for_water)
+    
+  
+  
+
   print("Remaining passthru sectors replaced")
   
   # Now need to remove transformation sectors from inputs of other transformations
   # ASSUMING THAT REFINED LIQUIDS ARE UPSTREAM OF ELECTRICITY
   # ASSUME ELECTRICITY UPSTREAM OF HYDROGEN
   
+  #water_irrigation_transform <- water_td_transform %>% 
+  #  filter(str_detect(sector,'water_td_irr_'))
+  
+  #water_elec_transform <- water_td_transform %>% 
+  #  filter(str_detect(sector,'water_td_elec_'))
+  
+  #water_an_transform <- water_td_transform %>% 
+  #  filter(str_detect(sector,'water_td_an_'))
+  
+  #water_pri_transform <- water_td_transform %>% 
+  #  filter(str_detect(sector,'water_td_pri_'))
+  
+  #water_ind_transform <- water_td_transform %>% 
+  #  filter(str_detect(sector,'water_td_ind_'))
+  
+  #water_muni_transform <- water_td_transform %>% 
+  #  filter(str_detect(sector,'water_td_muni_'))
+  
   transform_sectors <- c("H2 enduse","H2 retail delivery","H2 retail dispensing","H2 wholesale dispensing","H2 industrial",
-                         "elect_td_bld", "elect_td_ind", "elect_td_trn",
+                         "elect_td_bld", "elect_td_trn", "elect_td_ind",
                          "district heat", "refined liquids enduse", "refined liquids industrial",
                          "delivered gas","wholesale gas")
+
+  
+  #in_passthru_remove <- in_passthru_remove %>%
+  #  mutate()
   
   in_primary <- in_passthru_remove %>%
     group_by(scenario, region, year) %>%
     group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
     ungroup() 
   
+  #in_primary <- in_primary %>%
+  #  group_by(scenario, region, year) %>%
+  #  group_modify(~transform_distributer(., c('H2 industrial','H2 wholesale dispensing','elect_td_trn','elect_td_ind')), keep=TRUE) %>%
+  #  ungroup() 
   
   print("Transformation sectors removed as inputs to other transformations")
   
@@ -388,13 +437,13 @@ energy_water_distributor <- function(prj){
   enduse_df <- in_primary %>%
     filter(type == "enduse") %>%
     rename(enduse = sector) %>% 
-    group_by(scenario, region, input, year) %>%
+    group_by(scenario, region, input, year, Units) %>%
     mutate(ratio_enduse_in_input = value / sum(value)) %>%
     ungroup()
   
   # Get ratio of input in each transformation sector
   transform_df <- transform_df %>% 
-    group_by(scenario, region, sector, year) %>%
+    group_by(scenario, region, sector, year, Units) %>%
     mutate(ratio_primary_in_trans = value / sum(value)) %>%
     ungroup() %>%
     rename(transformation = sector, primary = input) %>%
@@ -406,7 +455,7 @@ energy_water_distributor <- function(prj){
            input == "regional natural gas") %>%
     mutate(input = "natural gas",
            enduse = sector) %>%
-    select(scenario, region, year, primary = input, transformation = sector, enduse, value)
+    select(scenario, region, year, primary = input, transformation = sector, enduse, value, Units)
   
   # Expand all transformation inputs in enduse_df to get primary inputs
   final_df <- enduse_df %>%
@@ -424,8 +473,11 @@ energy_water_distributor <- function(prj){
            transformation = if_else(transformation %in% c("refined liquids enduse", "refined liquids industrial"),
                                     "refining", transformation),
            transformation = if_else(transformation %in% c("delivered gas", "wholesale gas"),
-                                    "gas processing", transformation)) %>%
-    group_by(scenario, region, year, primary, transformation, enduse) %>%
+                                    "gas processing", transformation),
+           primary = if_else(str_detect(primary,'_water consumption'),'water consumption', primary),
+           primary = if_else(str_detect(primary,'_water withdrawals'),'water withdrawals', primary),
+           Units = if_else(primary %in% c('water consumption','water withdrawals','biophysical water consumption','seawater'),'km^3','EJ')) %>%
+    group_by(scenario, region, year, primary, transformation, enduse, Units) %>%
     summarise(value = sum(value)) %>%
     ungroup()
 
