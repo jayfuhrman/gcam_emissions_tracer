@@ -61,7 +61,8 @@ downstream_replacer <- function(df, primary_sectors){
 upstream_replacer <- function(df){
   i <- 1
   while (i <= dim(df)[1]){
-    if ( round(df$ratio[i],6) == 1 && round(df$ratio2[i],6) == 1 ){
+    if ( round(df$ratio[i],8) == 1 && round(df$ratio2[i],8) == 1 && !(df$sector[i] == 'total biomass')){
+      #skip if sector == total biomass as this is water into biomass cultivation and it is a passthru rather than primary sector in this instance
       val_to_divide <- filter(df, input == df$input[i])$value
       
       df <- df %>%
@@ -76,7 +77,7 @@ upstream_replacer <- function(df){
       i <- i + 1
     }
   }
-  return(df %>% select(-scenario, -region, -year))
+  return(df %>% select(-scenario, -region, -year, -Units))
 }
 
 # use ratios to apportion passthru sectors to transformation sectors
@@ -317,7 +318,7 @@ energy_water_distributor <- function(prj){
   # replace inputs with sector name with upstream input name,
   # then delete upstream row
   in_replace_upstream <- in_replace_downstream %>%
-    group_by(scenario, region, year) %>%
+    group_by(scenario, region, year, Units) %>%
     group_modify(~upstream_replacer(.), keep=TRUE) %>%
     ungroup() 
   
@@ -363,49 +364,33 @@ energy_water_distributor <- function(prj){
   #consuming itself, which represents electricity use for irrigation. 
   #Therefore we adjust upwards the amount of electricity for all sectors by the amount of electricity used to pump water, 
   #and drop any remaining rows where sectors consume themselves as inputs
-  energy_for_water <- in_passthru_remove %>%
-    filter(input == sector) %>%
-    select(-sector,-Units,-value,-type) %>%
-    left_join(in_passthru_remove, by = c("scenario","region","year","input")) %>%
-    group_by(scenario,region,year,input,Units) %>%
-    mutate(total_input = sum(value),
-           own_use = sum(value[which(input==sector)])/total_input,
-           value = value * 1 + own_use) %>%
-    filter(!(sector == input)) %>%
-    ungroup() %>%
-    select(-total_input,-own_use)
+
+   energy_for_water <- in_passthru_remove %>%
+     filter(input == sector) %>%
+     select(-sector,-Units,-value,-type) %>%
+     left_join(in_passthru_remove, by = c("scenario","region","year","input")) %>%
+     group_by(scenario,region,year,input,Units) %>%
+     mutate(total_input = sum(value),
+            own_use = sum(value[which(input==sector)])/total_input,
+            value = value * 1 + own_use) %>%
+     filter(!(sector == input)) %>%
+     ungroup() %>%
+     select(-total_input,-own_use)
   
   
-  in_passthru_remove <- in_passthru_remove %>%
-    filter(!(input %in% energy_for_water$input)) %>%
-    bind_rows(energy_for_water)
+   #in_passthru_remove <- in_passthru_remove %>%
+   #  filter(!(input %in% energy_for_water$input)) %>%
+   #  bind_rows(energy_for_water)
+   
+   in_passthru_remove <- in_passthru_remove %>%
+     anti_join(energy_for_water,by = c("scenario","region","input","year")) %>%
+     bind_rows(energy_for_water)
     
   
   
 
   print("Remaining passthru sectors replaced")
   
-  # Now need to remove transformation sectors from inputs of other transformations
-  # ASSUMING THAT REFINED LIQUIDS ARE UPSTREAM OF ELECTRICITY
-  # ASSUME ELECTRICITY UPSTREAM OF HYDROGEN
-  
-  #water_irrigation_transform <- water_td_transform %>% 
-  #  filter(str_detect(sector,'water_td_irr_'))
-  
-  #water_elec_transform <- water_td_transform %>% 
-  #  filter(str_detect(sector,'water_td_elec_'))
-  
-  #water_an_transform <- water_td_transform %>% 
-  #  filter(str_detect(sector,'water_td_an_'))
-  
-  #water_pri_transform <- water_td_transform %>% 
-  #  filter(str_detect(sector,'water_td_pri_'))
-  
-  #water_ind_transform <- water_td_transform %>% 
-  #  filter(str_detect(sector,'water_td_ind_'))
-  
-  #water_muni_transform <- water_td_transform %>% 
-  #  filter(str_detect(sector,'water_td_muni_'))
   
   transform_sectors <- c("H2 enduse","H2 retail delivery","H2 retail dispensing","H2 wholesale dispensing","H2 industrial",
                          "elect_td_bld", "elect_td_trn", "elect_td_ind",
@@ -523,7 +508,8 @@ energy_water_distributor <- function(prj){
   
   if (any(is.na(comp))){
     print("NAs in fuel total comparison (likely due to historical oil)")
-    print(comp)
+    write_csv(comp %>%
+                filter(is.na(new_total)),'NAS_in_fuel_totals.csv')
   }
   
   if (any(abs(comp$diff) > 0, na.rm = TRUE)){
@@ -678,7 +664,8 @@ fuel_distributor <- function(prj){
     mutate(ratio2 = value / sum(value)) %>%
     ungroup()  %>%
     # Remove nans - these sectors no longer matter
-    na.omit()
+    na.omit() %>%
+    mutate(Units = 'EJ') #add dummy units column for compatibility with full energy water tracer version of upstream replacer function
   
   
   # If both ratios = 1
