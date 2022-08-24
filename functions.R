@@ -166,8 +166,12 @@ transform_distributer <- function(df, transform_sectors){
 # similar to fuel tracer but also includes emissions-free energy, and water impacts
 energy_water_distributor <- function(prj){
   ###################  Data Tidying ###################  
-  input <- rgcam::getQuery(prj, "inputs by subsector") %>%
-    filter(sector != "chemical", sector != "industry")
+  input <- rgcam::getQuery(prj, "inputs by tech") %>%
+    filter(sector != "chemical", sector != "industry") %>%
+    group_by(scenario,region,year,sector,subsector,input,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
+  
   sectors <- input %>% 
     filter(Units %in% c("EJ","km^3")) %>%
     # Rewrite transportation subsector to sector
@@ -526,9 +530,13 @@ energy_water_distributor <- function(prj){
 
 fuel_distributor <- function(prj){
   ###################  Data Tidying ###################  
-  input <- rgcam::getQuery(prj, "inputs by subsector") %>%
+  input <- rgcam::getQuery(prj, "inputs by tech") %>%
     # Remove industry and chemical, as they simply aggregate more detailed sectors
-    filter(sector != "chemical", sector != "industry")
+    filter(sector != "chemical", sector != "industry") %>%
+    group_by(scenario,region,year,sector,subsector,input,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
+  
   sectors <- input %>% 
     filter(Units == "EJ") %>%
     # Rewrite transportation subsector to sector
@@ -790,7 +798,10 @@ fuel_distributor <- function(prj){
   
   fuel_tracing <- final_df
   
-  outputs_by_subsector <- rgcam::getQuery(prj,'outputs by subsector')
+  outputs_by_subsector <- rgcam::getQuery(prj,'outputs by tech')   %>%
+    group_by(scenario,region,year,sector,subsector,output,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
   
   H2_forecourt_sectors <-  outputs_by_subsector %>%
     filter(subsector == 'forecourt production') %>%
@@ -898,8 +909,14 @@ lifecycle_CO2_emiss_phase_disag <- function(df){
   
   ccoef_mapping <- read_csv('input/ccoef_mapping.csv',show_col_types = FALSE)
   
-  outputs_by_subsector <- rgcam::getQuery(prj, 'outputs by subsector')
-  inputs_by_subsector <- rgcam::getQuery(prj, 'inputs by subsector')
+  outputs_by_subsector <- rgcam::getQuery(prj, 'outputs by tech') %>%
+    group_by(scenario,region,year,sector,subsector,output,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
+  inputs_by_subsector <- rgcam::getQuery(prj, 'inputs by tech') %>%
+    group_by(scenario,region,year,sector,subsector,input,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
   CO2_sequestration_by_tech <- rgcam::getQuery(prj, 'CO2 sequestration by tech')
   
   inputs_by_subsector %>%
@@ -1003,7 +1020,10 @@ final_fuel_CO2_disag <- function(all_emissions){
   sectors_elec <- sectors %>%
     filter(rewrite == 'electricity')
   
-  inputs_by_subsector <- rgcam::getQuery(prj, "inputs by subsector")
+  inputs_by_subsector <- rgcam::getQuery(prj, "inputs by tech") %>%
+    group_by(scenario,region,year,sector,subsector,input,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
   
   
   all_emissions %>%
@@ -1063,7 +1083,10 @@ final_fuel_CO2_disag <- function(all_emissions){
   #get electricity emissions intensity per unit generated as it is a fuel for certain other transform sectors (e.g., H2 production)
   
   
-  outputs_by_subsector <- rgcam::getQuery(prj, 'outputs by subsector') %>%
+  outputs_by_subsector <- rgcam::getQuery(prj, 'outputs by tech') %>%
+    group_by(scenario,region,year,sector,subsector,output,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
     filter(sector == 'electricity') %>%
     group_by(scenario,region,year,Units) %>%
     summarize(value = sum(value)) %>%

@@ -2,6 +2,47 @@
 
 <queries>
 
+	<aQuery>
+    	<all-regions/>
+                <supplyDemandQuery title="costs of transport techs">
+                    <axis1 name="technology">technology</axis1>
+                    <axis2 name="Year">cost</axis2>
+                    <xPath buildList="true" dataName="cost" group="false" sumAll="false">*[@type='sector' and (@name='transportation' or (exists(child::keyword[@final-energy='transportation'])))]/
+               *[@type='subsector' ]/*[@type='technology']/cost/text()</xPath>
+                    <comments/>
+                </supplyDemandQuery>
+	</aQuery>
+	
+	<aQuery>
+    	<all-regions/>
+            <emissionsQueryBuilder title="CO2 emissions by tech">
+                <axis1 name="technology">technology</axis1>
+                <axis2 name="Year">emissions</axis2>
+                <xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector' ]/*[@type='subsector']/*[@type='technology']//
+            CO2/emissions/node()</xPath>
+                <comments/>
+            </emissionsQueryBuilder>
+	</aQuery>
+
+	<aQuery>
+    	<all-regions/>
+ 			<supplyDemandQuery title="costs by tech">
+                <axis1 name="technology">technology</axis1>
+                <axis2 name="Year">technology</axis2>
+                <xPath buildList="true" dataName="cost" group="false" sumAll="false">*[@type='sector' and (local-name()!='AgSupplySector')]/*[@type = 'subsector']/*[@type = 'technology']/cost/text()</xPath>
+                <comments>Excludes AgProductionTechnology costs, where data written out are no meaningful</comments>
+            </supplyDemandQuery>
+	</aQuery>
+
+	<aQuery>
+    	<all-regions/>
+            <supplyDemandQuery title="outputs by tech">
+                <axis1 name="technology">technology[@name]</axis1>
+                <axis2 name="Year">physical-output[@vintage]</axis2>
+                <xPath buildList="true" dataName="output" group="false" sumAll="false">*[@type='sector']/*[@type='subsector']/*[@type='technology']/*[@type='output']/physical-output/node()</xPath>
+                <comments/>
+            </supplyDemandQuery>
+	</aQuery>
 
 	<aQuery>
     	<all-regions/>
