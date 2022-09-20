@@ -61,7 +61,7 @@ downstream_replacer <- function(df, primary_sectors){
 upstream_replacer <- function(df){
   i <- 1
   while (i <= dim(df)[1]){
-    if ( round(df$ratio[i],8) == 1 && round(df$ratio2[i],8) == 1 && !(df$sector[i] == 'total biomass')){
+    if ( round(df$ratio[i],16) == 1 && round(df$ratio2[i],16) == 1 && !(df$sector[i] == 'total biomass')){
       #skip if sector == total biomass as this is water into biomass cultivation and it is a passthru rather than primary sector in this instance
       val_to_divide <- filter(df, input == df$input[i])$value
       
@@ -780,6 +780,7 @@ fuel_distributor <- function(prj){
            value = if_else(is.na(value.y), value.x, value.y * ratio_enduse_in_input),
            input = if_else(input==primary, enduse,input)) %>%
     select(scenario, region, year, primary, transformation = input, enduse, value) %>%
+    filter(!(primary == 'natural gas' & transformation == 'unconventional oil production')) %>%
     bind_rows(gas_in_unconventional_oil) 
   
   # Group electricity, refining, gas processing, H2 production
@@ -840,7 +841,8 @@ fuel_distributor <- function(prj){
   fuel_tracing_FIXED_H2 <- bind_rows(fuel_tracing_wholesale_dispensing_central,fuel_tracing_wholesale_dispensing_forecourt,fuel_tracing_central)
   
   fuel_tracing_no_H2 <- fuel_tracing %>%
-    filter(!str_detect(transformation,'H2'))
+    filter(!str_detect(transformation,'H2')) %>%
+    bind_rows(fuel_tracing %>% filter(transformation == 'H2 enduse')) #add back H2 enduse for backwards compatibility
   
   final_df <- bind_rows(fuel_tracing_no_H2,fuel_tracing_FIXED_H2)
   
@@ -883,6 +885,7 @@ fuel_distributor <- function(prj){
   
   if (any(is.na(comp))){
     print("NAs in fuel total comparison (likely due to historical oil)")
+    write_csv(comp %>% filter(is.na(diff)),'nas_in_fuel_total_comparison.csv')
   }
   
   if (any(abs(comp$diff) > 0, na.rm = TRUE)){
