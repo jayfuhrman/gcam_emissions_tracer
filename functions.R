@@ -557,7 +557,6 @@ fuel_distributor <- function(prj){
   
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
                               "elect_td_bld", "elect_td_ind", "elect_td_trn",
-                              #"H2 central production","H2 retail delivery","H2 industrial","H2 wholesale dispensing","H2 retail dispensing","H2 enduse",
                               "H2 retail delivery","H2 retail dispensing","H2 industrial","H2 wholesale dispensing","H2 enduse",
                               "refined liquids enduse", "refined liquids industrial",
                               "wholesale gas", "traditional biomass", "district heat")
@@ -796,7 +795,7 @@ fuel_distributor <- function(prj){
     ungroup()
   
   ####Disentangle the H2 web...
-  
+  if (!any(str_detect('H2 enduse',final_df$transformation))){
   fuel_tracing <- final_df
   
   outputs_by_subsector <- rgcam::getQuery(prj,'outputs by tech')   %>%
@@ -845,7 +844,7 @@ fuel_distributor <- function(prj){
     bind_rows(fuel_tracing %>% filter(transformation == 'H2 enduse')) #add back H2 enduse for backwards compatibility
   
   final_df <- bind_rows(fuel_tracing_no_H2,fuel_tracing_FIXED_H2)
-  
+  } 
   #####
   
   final_df <- final_df %>%
@@ -1976,6 +1975,15 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     summarise(ratio = sum(ratio_enduse_in_transformation)) %>%
     ungroup() %>%
     mutate(direct = transformation)
+  
+  if (any(str_detect('H2 enduse',transform_division$transformation))){
+    
+    ghg_rewrite <- ghg_rewrite %>%
+      mutate(direct = if_else(direct %in% c('H2 central production','H2 forecourt production'), 'H2 enduse', direct)) %>%
+      group_by(Units,scenario,region,year,type,direct,ghg) %>%
+      summarize(value = sum(value)) %>%
+      ungroup()
+  }
   
   
   transformation <- ghg_rewrite %>%
