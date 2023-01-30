@@ -1823,7 +1823,7 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     filter(sector == "iron and steel",
            str_detect(technology, "CCS")) %>%
     # Get rid of electricity and scrap
-    filter(!(input %in% c("elect_td_ind", "scrap","H2 industrial"))) %>%
+    filter(!(input %in% c("elect_td_ind", "scrap","H2 industrial","H2 enduse"))) %>%
     # Fix input names
     mutate(input = str_replace(input, "delivered coal", "coal"),
            input = str_replace(input, "wholesale gas", "natural gas")) %>%
@@ -1857,18 +1857,18 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     # filter(region == "China", year == "2050") %>% # TEMPORARY
     filter(sector != "iron and steel", year > 1990) %>%
     bind_rows(iron_steel_replace) %>%
-    mutate(sector = if_else(str_detect(sector, "elec_"), "electricity", sector),
-           sector = if_else(str_detect(sector, "H2"), "H2 enduse", sector)) %>%
+    mutate(sector = if_else(str_detect(sector, "elec_"), "electricity", sector)) %>%
+    mutate(sector = if_else(str_detect(sector, "H2"), "H2 enduse", sector)) %>%
     group_by(Units, scenario, region, sector, subsector, year) %>%
     summarise(value = sum(value)) %>%
     ungroup() 
   
   seq2 <- seq %>%
     left_join(primary_map, by = "subsector") %>%
-    mutate(transformation = sector) %>% #,
-#           transformation = str_replace_all(transformation, 
-#                                            "H2 central production",
-#                                            "H2 enduse")) %>%
+    mutate(transformation = sector,
+           transformation = str_replace_all(transformation, 
+                                            "H2 central production",
+                                            "H2 enduse")) %>%
     left_join(primary_in_trans, 
               by = c("scenario", "region", "year", "primary" = "trans_map")) %>%
     # If join occurred, enduse should be old transform,
@@ -1925,11 +1925,12 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
   cwf_mapping <- read_csv('input/CWF-sector-mapping.csv')
   
   seq3 <- bind_rows(seq3, global) %>% 
-    filter(year >= 2005) %>%
+    filter(year >= 2005,
+           enduse != 'H2 enduse') %>% # tmp
     mutate(value = if_else(is.na(value),0,value)) %>%
     mutate(phase = if_else(transformation %in% c('electricity','H2 enduse','gas processing','refining'),'midstream','enduse')) %>%
     mutate(ghg = if_else(enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg)) %>%
-    mutate(transformation = if_else(transformation %in% c('H2 enduse','H2 central production','H2 wholesale dispensing'),'hydrogen',transformation),
+    mutate(transformation = if_else(transformation %in% c('H2 enduse','H2 central production','H2 wholesale dispensing'),'H2 production',transformation),
            transformation = if_else(direct == 'limestone','calcination',transformation),
            direct = if_else(direct == 'limestone','Non-energy',direct)) %>%
     left_join(cwf_mapping,by = c('enduse'))
@@ -2126,8 +2127,8 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
       summarize(value = sum(value)) %>%
       ungroup()
     
-    #write_csv(ghg_rewrite_grouped,'ghg_rewrite_grouped.csv')
-    #write_csv(calculated_emissions_rus_grouped,'calculated_emissions_rus_grouped.csv')
+    write_csv(ghg_rewrite_grouped,'ghg_rewrite_grouped.csv')
+    write_csv(calculated_emissions_rus_grouped,'calculated_emissions_rus_grouped.csv')
     
     joined_emiss <- ghg_rewrite_grouped %>%
       rename(orig_value = value) %>%
