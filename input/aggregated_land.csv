@@ -12,18 +12,32 @@ OilCrop,crops
 OtherArableLand,otherarable
 OtherGrain,crops
 PalmFruit,crops
-Pasture,pasture
+Pasture,ManagedPasture
 Rice,crops
 RockIceDesert,other natural
 RootTuber,crops
 Shrubland,shrubland
 SugarCrop,crops
 UnmanagedForest,forest
-UnmanagedPasture,pasture
+UnmanagedPasture,UnmanagedPasture
 UrbanLand,urban
 Wheat,crops
 Tundra,other natural
 ProtectedGrassland,grassland
 ProtectedShrubland,shrubland
 ProtectedUnmanagedForest,forest
-ProtectedUnmanagedPasture,pasture
+ProtectedUnmanagedPasture,UnmanagedPasture
+Soybean,crops
+CornC4,crops
+OtherGrainC4,crops
+OilCropTree,crops
+OilPalmTree,crops
+MiscCropTree,crops
+Legumes,crops
+SugarCropC4,crops
+FodderHerbC4,crops
+NutsSeeds,crops
+Vegetables,crops
+FruitsTree,crops
+NutsSeedsTree,crops
+Fruits,crops
