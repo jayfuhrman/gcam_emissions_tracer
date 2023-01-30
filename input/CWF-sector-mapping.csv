@@ -77,3 +77,14 @@ municipal water distribution,Industry
 municipal water treatment,Industry
 other industrial energy use,Industry
 other industrial feedstocks,Industry
+Fruits,Agriculture
+Legumes,Agriculture
+ManagedPasture,Agriculture
+UnmanagedPasture,Agriculture
+NutsSeeds,Agriculture
+OilPalm,Agriculture
+Soybean,Agriculture
+Vegetables,Agriculture
+refined liquids enduse,Industry
+refined liquids industrial,Industry
+CO2 removal,Tech CDR
