@@ -1619,7 +1619,7 @@ direct_aggregation <- function(all_emissions){
   cwf_mapping <- read_csv('input/CWF-sector-mapping.csv')
   
   all_emissions %>%
-    mutate(direct = if_else(direct %in% non_energy,'Non-energy',direct)) %>%
+    mutate(direct = if_else(direct %in% non_energy & Units == 'MTCO2e','Non-energy',direct)) %>%
     mutate(direct = if_else(direct == 'refined liquids','crude oil',direct)) %>%
     mutate(direct = if_else(direct == 'traditional biomass','biomass',direct)) %>%
     mutate(direct = if_else(direct == 'unconventional oil','crude oil',direct)) %>%
@@ -1629,6 +1629,7 @@ direct_aggregation <- function(all_emissions){
     mutate(direct = if_else(ghg == 'CO2' & direct == 'biomass' & value <= 0,'biomass CCS',direct)) %>%
     mutate(direct = if_else(ghg == 'CO2' & (direct == 'biomass CCS' | direct == 'biomass') & value >= 0,'natural gas',direct)) %>% #due to numerical precision some small amount of biomass CO2 emissions come out as small positive numbers (and vise versa for )
     mutate(transformation = if_else(transformation == 'H2 grid electrolysis','H2 production',transformation)) %>%
+    mutate(transformation = if_else(transformation %in% c('hydrogen','H2 central production','H2 wholesale dispensing'),'H2 production',transformation)) %>%
     mutate(direct = if_else(enduse == 'UnmanagedLand','LULUCF',direct)) %>%
     mutate(direct = if_else(direct == 'Coal','coal',direct)) %>%
     mutate(enduse = if_else(enduse == 'ces','direct air capture',enduse)) %>%
@@ -1639,6 +1640,7 @@ direct_aggregation <- function(all_emissions){
            ghg = if_else(ghg == 'Captured CO2' & enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg),
            phase = if_else(direct == 'biomass CCS' & phase == 'enduse' & ghg == 'CO2' & transformation %in% c('gas processing','refining','H2 production'),'midstream',phase),
            phase = if_else(direct == 'LULUCF','resource production',phase),
+           phase = if_else(direct == 'district heat' & Units == 'Tg','midstream',phase),
            phase = if_else(enduse == 'unconventional oil production','resource production',phase),
            transformation = if_else(enduse %in% c('direct air capture','cement') & direct %in% c('coal','crude oil','natural gas','biomass') & phase == 'enduse','process heat',transformation),
            direct = if_else(direct == 'gas','natural gas',direct),
@@ -2010,7 +2012,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   ghg <- ghg %>%
     left_join(GWP, by = c("ghg", "Units")) %>%
     mutate(value = value * GWP,
-           Units = "MTCO2e") %>%
+           Units = if_else(type %in% c('CO2','Super Pollutant'),"MTCO2e",Units)) %>%
     na.omit() %>%
     select(-type, -GWP)
   
@@ -2091,7 +2093,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     select(-sector) %>%
     left_join(GWP, by = c("Units", "ghg")) %>%
     mutate(value = value * GWP,
-           Units = "MTCO2e") %>%
+           Units = if_else(type %in% c('CO2','Super Pollutant'),"MTCO2e",Units)) %>%
     select(-GWP, -type) 
   
   
@@ -2178,19 +2180,14 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   
   #final fuel processing - JF
   all_emissions1 <- final_fuel_CO2_disag(all_emissions)
-  #write_csv(all_emissions1,'all_emissions1.csv')
   
   all_emissions2 <- final_fuel_nonCO2_disag(all_emissions1) 
-  #write_csv(all_emissions2,'2_final_fuel_nonCO2_disag.csv')
   
   all_emissions3 <- lifecycle_CO2_emiss_phase_disag(all_emissions2)
-  #write_csv(all_emissions3,'3_lifecycle_CO2_emiss_phase_disag.csv')
   
   all_emissions4 <- direct_aggregation(all_emissions3)
-  #write_csv(all_emissions4,'4_direct_aggregation.csv')
   
-  all_emissions <- all_emissions4  #temporarily set to initial disaggregation step only to see where in processing errors occur
-  #write_csv(all_emissions,'all_emissions.csv')
+  all_emissions <- all_emissions4  
   
   # Combine all emissions and add global region
   global <- all_emissions %>%

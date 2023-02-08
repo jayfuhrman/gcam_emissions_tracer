@@ -67,7 +67,7 @@ get_upstream_emiss_intensity <- function(prj,all_emissions,regions,multiple_incu
 abatement_cost_calculator <- function(prj,all_emissions,count_upstream_emiss){
   
   
-  incumbent_techs <- read_csv('mappings/incumbent_techs.csv') %>%
+  incumbent_techs <- read_csv('input/incumbent_techs.csv') %>%
     mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>%
     group_by(sector) %>%
     mutate(num_incumbent_subsectors = length(subsector)) %>%
@@ -86,7 +86,7 @@ abatement_cost_calculator <- function(prj,all_emissions,count_upstream_emiss){
     mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector),
            sector = if_else(sector %in% multiple_incumbent_subsectors$sector,
                             paste0(subsector,' ',sector),sector)) %>%
-    filter(ghg == 'CO2',
+    filter(#ghg == 'CO2',
            sector %in% incumbent_techs$sector,
            region %in% regions) %>%
     rename(emiss = value,
@@ -141,11 +141,11 @@ abatement_cost_calculator <- function(prj,all_emissions,count_upstream_emiss){
     summarize(emiss_intensity = sum(emiss_intensity)) %>%
     ungroup() -> emiss_intensity
   
-  write_csv(emiss_intensity %>% 
-              group_by(scenario,region,year,sector,technology,emiss_intensity_Units,phase) %>%
-              summarize(emiss_intensity = sum(emiss_intensity)) %>%
-              ungroup() %>% 
-              pivot_wider(names_from = year, values_from = emiss_intensity),'CO2_emissions_intensity_by_lifecycle_phase.csv')
+  #write_csv(emiss_intensity %>% 
+  #            group_by(scenario,region,year,sector,technology,emiss_intensity_Units,phase) %>%
+  #            summarize(emiss_intensity = sum(emiss_intensity)) %>%
+  #            ungroup() %>% 
+  #            pivot_wider(names_from = year, values_from = emiss_intensity),'CO2_emissions_intensity_by_lifecycle_phase.csv')
   
   } else{
     emiss_intensity <- tailpipe_emiss_intensity
