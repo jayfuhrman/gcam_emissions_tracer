@@ -33,3 +33,31 @@ HFC23,12.4,Tg,Super Pollutant
 HFC236fa,8.06,Tg,Super Pollutant
 HFC32,0.677,Tg,Super Pollutant
 HFC365mfc,0.804,Tg,Super Pollutant
+HFC43,1.65,Tg,Super Pollutant
+BC,1,Tg,nonGHG
+BC_AWB,1,Tg,nonGHG
+CO,1,Tg,nonGHG
+CO_AWB,1,Tg,nonGHG
+H2,1,Tg,nonGHG
+H2_AWB,1,Tg,nonGHG
+NH3,1,Tg,nonGHG
+NH3_AGR,1,Tg,nonGHG
+NH3_AWB,1,Tg,nonGHG
+NMVOC,1,Tg,nonGHG
+NMVOC_AGR,1,Tg,nonGHG
+NMVOC_AWB,1,Tg,nonGHG
+NOx,1,Tg,nonGHG
+NOx_AGR,1,Tg,nonGHG
+NOx_AWB,1,Tg,nonGHG
+OC,1,Tg,nonGHG
+OC_AWB,1,Tg,nonGHG
+PM10,1,Tg,nonGHG
+PM2.5,1,Tg,nonGHG
+SO2_1,1,Tg,nonGHG
+SO2_1_AWB,1,Tg,nonGHG
+SO2_2,1,Tg,nonGHG
+SO2_2_AWB,1,Tg,nonGHG
+SO2_3,1,Tg,nonGHG
+SO2_3_AWB,1,Tg,nonGHG
+SO2_4,1,Tg,nonGHG
+SO2_4_AWB,1,Tg,nonGHG
