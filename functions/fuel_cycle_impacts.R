@@ -6,7 +6,7 @@ library(stringr)
 library(readr)
 library(ggplot2)
 
-end_use = 'iron and steel'
+end_use = 'Car'
 #fuel_cycle_mappings <- read_csv('input/fuel_cycle_mappings.csv')
 
 emissions_fuel_cycle <- function(all_emissions,end_use){
@@ -134,7 +134,7 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
     group_by(scenario,region,year,enduse,technology,ghg,transformation,Units.x,Units.y,phase,CWF_Sector) %>%
     summarize(value = sum(value)) %>%
     ungroup()
-
   
+  return(fuel_cycle_emiss)
   
 }
