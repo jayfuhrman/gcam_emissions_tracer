@@ -6,7 +6,7 @@ library(stringr)
 library(readr)
 library(ggplot2)
 
-end_use = 'Car'
+end_use = 'cement'
 #fuel_cycle_mappings <- read_csv('input/fuel_cycle_mappings.csv')
 
 emissions_fuel_cycle <- function(all_emissions,end_use){
@@ -23,9 +23,20 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
     summarize(value = sum(value)) %>%
     ungroup()
   
+  inputs_by_tech <- getQuery(prj,'inputs by tech') %>%
+    mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>%
+    rename(enduse = sector) %>%
+    filter(enduse == end_use | enduse == paste0('process heat ', end_use)) 
+    
+  #mutate(enduse = end_use) %>%
+    #group_by(Units,scenario,region,enduse,subsector,technology,input,year) %>%
+    #summarize(value = sum(value)) %>%
+    #ungroup()
+  
   nonCO2 <- getQuery(prj,'nonCO2 emissions by tech') %>%
     mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>%
-    filter(sector == end_use) %>%
+    filter(sector == end_use | sector == paste0('process heat ', end_use)) %>%
+    #mutate(sector = end_use) %>%
     rename(enduse = sector) 
   
   nonCO2_enduse <- nonCO2 %>%
@@ -34,12 +45,9 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
     group_by(scenario,region,year,enduse,ghg) %>%
     mutate(emiss_frac = value / sum(value)) %>%
     ungroup() %>%
-    select(-value,-Units,-subsector)
-  
-  inputs_by_tech <- getQuery(prj,'inputs by tech') %>%
-    mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>%
-    rename(enduse = sector) %>%
-    filter(enduse == end_use)
+    select(-value,-Units,-subsector) %>%
+    mutate(transformation = if_else(transformation == paste0('process heat ', end_use) & !(ghg %in% c('CH4', 'N2O')), end_use, 
+                                    if_else(transformation == paste0('process heat ', end_use) & (ghg %in% c('CH4', 'N2O')), 'process heat',transformation))) 
   
   ccoef_mapping <- read_csv('input/ccoef_mapping.csv') %>%
     mutate(PrimaryFuelCO2Coef = if_else(fuel == 'biomass',0,PrimaryFuelCO2Coef)) %>%
@@ -47,7 +55,7 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
   
   CO2_seq <- getQuery(prj,'CO2 sequestration by tech') %>%
     mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>%
-    filter(sector == end_use) %>%
+    filter(sector == end_use | sector == paste0('process heat ', end_use)) %>%
     rename(enduse = sector) 
   
   CO2_enduse_by_tech <- inputs_by_tech %>%
@@ -75,30 +83,41 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
     group_by(scenario,region,year,enduse,transformation) %>%
     mutate(emiss_frac = emiss / sum(emiss)) %>%
     ungroup() %>%
-    select(scenario,region,year,enduse,technology,ghg,emiss_frac,transformation)
+    select(scenario,region,year,enduse,technology,ghg,emiss_frac,transformation) %>%
+    mutate(transformation = if_else(str_detect(enduse,'process heat'), 'process heat', transformation),
+           transformation = if_else(str_detect(transformation,'cement'), 'calcination', transformation))
   
 
   
   enduse_emiss_disag <- bind_rows(CO2_enduse,nonCO2_enduse) %>%
-    left_join(all_emiss %>% filter(phase == 'enduse'),by = c('scenario','region','year','enduse','transformation','ghg')) %>%
+    left_join(all_emiss %>% 
+                filter(phase == 'enduse'),by = c('scenario','region','year','enduse','transformation','ghg')) %>%
     filter(year >= 2005) %>%
     mutate(value = value * emiss_frac) %>%
     select(scenario,region,enduse,technology,ghg,year,transformation,direct,Units,phase,CWF_Sector,value)
   #disaggregated enduse emissions
     
-  inputs_by_tech <- inputs_by_tech %>%
+  inputs_by_tech_upstream <- inputs_by_tech %>%
+    filter(!str_detect(input,'process heat')) %>%
     mutate(transformation = if_else(str_detect(input,'elect_'),'electricity',
                                     if_else(str_detect(input,'H2'),'H2 production',
                                             if_else(str_detect(input,'gas'),'gas processing',
-                                                    if_else(str_detect(input,'refined liquids'),'refining',enduse))))) %>%
+                                                    if_else(str_detect(input,'refined liquids'),'refining',enduse)))),
+           transformation = if_else(str_detect(enduse,'process heat') & input %in% c('delivered biomass','delivered coal'), end_use, transformation)) %>%#,
     group_by(scenario,region,year,enduse,transformation) %>%
     mutate(input_frac = value / sum(value)) %>%
     ungroup()
   
-  upstream_emiss <- all_emiss %>%
-    filter(phase != 'enduse')
+  inputs_by_tech_upstream <- inputs_by_tech_upstream %>%
+    bind_rows(inputs_by_tech_upstream %>% 
+                filter(transformation == 'process heat') %>% 
+                mutate(transformation = end_use))
   
-  upstream_emiss_disag <- inputs_by_tech %>%
+  upstream_emiss <- all_emiss %>%
+    filter(phase != 'enduse') 
+    
+  
+  upstream_emiss_disag <- inputs_by_tech_upstream %>%
     select(-value,-Units) %>%
     left_join(upstream_emiss, by = c('scenario','region','year','enduse','transformation')) %>%
     filter(year >= 2005) %>%
@@ -111,9 +130,6 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
   
   output <- rgcam::getQuery(prj, "outputs by tech") %>%
     mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>% 
-    # The emissions tracer tool does not currently differentiate between liquids and hybrid liquids technologies 
-    # so we group them together to avoid allocating all emissions to a small number of tkm / pkm and double counting
-    # implicitly this reflects enhanced efficiency adoption over time for liquid fueled vehicles
     filter(sector == end_use,
            year >= 2005) %>%
     rename(enduse = sector) %>%
