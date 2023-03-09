@@ -6,22 +6,42 @@ library(stringr)
 library(readr)
 library(ggplot2)
 
-end_use = 'cement'
-#fuel_cycle_mappings <- read_csv('input/fuel_cycle_mappings.csv')
+end_use = 'process heat cement'
 
 emissions_fuel_cycle <- function(all_emissions,end_use){
+  
+  if (end_use == 'process heat cement'){
+    
+    
+    all_emiss <- all_emissions %>%
+      pivot_longer(`2005`:`2050`,names_to='year') %>%
+      mutate(year = as.numeric(year),
+             transformation = if_else(direct == 'natural gas' & transformation == enduse, 'gas processing',transformation)) %>%
+      filter(!is.na(value),
+             enduse == 'cement') %>%
+      select(scenario,region,direct,transformation,enduse,ghg,Units,phase,CWF_Sector,year,value) %>%
+      group_by(scenario,region,direct,transformation,enduse,ghg,Units,phase,CWF_Sector,year) %>%
+      summarize(value = sum(value)) %>%
+      ungroup()
+    
+    all_emiss <- all_emiss %>%
+      filter(transformation != 'calcination') %>%
+      mutate(enduse = end_use)
+    
+  } else{
 
+  
   all_emiss <- all_emissions %>%
     pivot_longer(`2005`:`2050`,names_to='year') %>%
     mutate(year = as.numeric(year),
            transformation = if_else(direct == 'natural gas' & transformation == enduse, 'gas processing',transformation)) %>%
     filter(!is.na(value),
-           enduse == end_use,
-           scenario %in% c('DOE-zero','GCAM-ref')) %>%
+           enduse == end_use) %>%
     select(scenario,region,direct,transformation,enduse,ghg,Units,phase,CWF_Sector,year,value) %>%
     group_by(scenario,region,direct,transformation,enduse,ghg,Units,phase,CWF_Sector,year) %>%
     summarize(value = sum(value)) %>%
     ungroup()
+  }
   
   inputs_by_tech <- getQuery(prj,'inputs by tech') %>%
     mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>%
@@ -47,7 +67,9 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
     ungroup() %>%
     select(-value,-Units,-subsector) %>%
     mutate(transformation = if_else(transformation == paste0('process heat ', end_use) & !(ghg %in% c('CH4', 'N2O')), end_use, 
-                                    if_else(transformation == paste0('process heat ', end_use) & (ghg %in% c('CH4', 'N2O')), 'process heat',transformation))) 
+                                    if_else(transformation == paste0('process heat ', end_use) & (ghg %in% c('CH4', 'N2O')), 'process heat',transformation)),
+           transformation = if_else(transformation == paste0('process heat cement') & ghg %in% c('CH4', 'N2O'), 'process heat',transformation),
+           enduse = end_use)
   
   ccoef_mapping <- read_csv('input/ccoef_mapping.csv') %>%
     mutate(PrimaryFuelCO2Coef = if_else(fuel == 'biomass',0,PrimaryFuelCO2Coef)) %>%
@@ -85,7 +107,8 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
     ungroup() %>%
     select(scenario,region,year,enduse,technology,ghg,emiss_frac,transformation) %>%
     mutate(transformation = if_else(str_detect(enduse,'process heat'), 'process heat', transformation),
-           transformation = if_else(str_detect(transformation,'cement'), 'calcination', transformation))
+           transformation = if_else(str_detect(transformation,'cement'), 'calcination', transformation),
+           enduse = end_use)
   
 
   
@@ -98,7 +121,8 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
   #disaggregated enduse emissions
     
   inputs_by_tech_upstream <- inputs_by_tech %>%
-    filter(!str_detect(input,'process heat')) %>%
+    filter(!str_detect(input,'process heat'),
+           !str_detect(input,'limestone')) %>%
     mutate(transformation = if_else(str_detect(input,'elect_'),'electricity',
                                     if_else(str_detect(input,'H2'),'H2 production',
                                             if_else(str_detect(input,'gas'),'gas processing',
@@ -111,21 +135,42 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
   inputs_by_tech_upstream <- inputs_by_tech_upstream %>%
     bind_rows(inputs_by_tech_upstream %>% 
                 filter(transformation == 'process heat') %>% 
-                mutate(transformation = end_use))
+                mutate(transformation = end_use)) %>%
+    mutate(enduse = if_else(enduse == 'cement', 'process heat cement',enduse))
   
   upstream_emiss <- all_emiss %>%
-    filter(phase != 'enduse') 
+    filter(phase != 'enduse') %>%
+    mutate(enduse = if_else(enduse == 'cement', 'process heat cement',enduse),
+           transformation = if_else(transformation == 'cement' & end_use == 'process heat cement', 'process heat cement', transformation))
     
   
   upstream_emiss_disag <- inputs_by_tech_upstream %>%
     select(-value,-Units) %>%
     left_join(upstream_emiss, by = c('scenario','region','year','enduse','transformation')) %>%
     filter(year >= 2005) %>%
-    mutate(value = value * input_frac) %>%
+    mutate(value = value * input_frac,
+           enduse = if_else(enduse == 'process heat cement' & end_use == 'cement', 'cement', enduse)) %>%
     select(scenario,region,enduse,technology,ghg,year,transformation,direct,Units,phase,CWF_Sector,value)
   
   disag_emiss_by_tech <- bind_rows(upstream_emiss_disag,enduse_emiss_disag)
   
+  process_heat_input_for_disag <- getQuery(prj,'inputs by tech') %>%
+    filter(input == paste0('process heat ',end_use)) %>%
+    group_by(scenario,region,year) %>%
+    mutate(input_frac = value / sum(value)) %>%
+    ungroup() %>%
+    select(scenario,region,year,technology,input_frac)
+  
+  process_heat_disag <- disag_emiss_by_tech %>%
+    filter(enduse %in% c('cement') & !str_detect(technology,'cement')) %>%
+    select(-technology) %>%
+    left_join(process_heat_input_for_disag, by = c('scenario','region','year')) %>%
+    mutate(value = value * input_frac) %>%
+    select(-input_frac)
+  
+  disag_emiss_by_tech <- disag_emiss_by_tech %>%
+    filter(!(enduse %in% c('cement') & !str_detect(technology,'cement'))) %>%
+    bind_rows(process_heat_disag)
 
   
   output <- rgcam::getQuery(prj, "outputs by tech") %>%
