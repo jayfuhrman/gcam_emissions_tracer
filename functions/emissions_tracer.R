@@ -172,6 +172,17 @@ energy_water_distributor <- function(prj){
     summarize(value = sum(value)) %>%
     ungroup()
   
+  hydro <- rgcam::getQuery(prj, "outputs by tech") %>% 
+    filter(sector == 'electricity',
+           subsector == 'hydro') %>%
+    group_by(scenario,region,year,sector,subsector,output,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    select(-output) %>%
+    mutate(input = subsector)
+  
+  input <- bind_rows(input,hydro)
+  
   sectors <- input %>% 
     filter(Units %in% c("EJ","km^3")) %>%
     # Rewrite transportation subsector to sector
@@ -184,7 +195,8 @@ energy_water_distributor <- function(prj){
   # Primary sectors are inputs, but don't have any inputs
   primary_sectors <- c(dplyr::setdiff(sectors$input, sectors$sector), 
                        "traded unconventional oil",
-                       "total biomass")
+                       "total biomass",
+                       "nuclearFuelGenIII","nuclearFuelGenII",'hydro')
   # But we only care about inputs that have associated emissions:
   # c("coal", "natural gas", "crude oil", "traditional biomass", "biomass", "unconventional oil")
   primary_remove <- setdiff(primary_sectors, 
@@ -192,7 +204,7 @@ energy_water_distributor <- function(prj){
                               "total biomass", "traded unconventional oil",
                               "global solar resource","distributed_solar",
                               "onshore wind resource","offshore wind resource",
-                              "geothermal",
+                              "geothermal",'hydro',
                               "nuclearFuelGenIII","nuclearFuelGenII",
                               "seawater","biophysical water consumption",primary_water$input))
   
@@ -201,7 +213,6 @@ energy_water_distributor <- function(prj){
   
   water_td_transform <- sectors  %>%
     filter(str_detect(sector,"water_td_")) %>%
-    
     distinct(sector)
   
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",

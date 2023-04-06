@@ -1,4 +1,4 @@
-
+library('gcamdata')
 
 get_upstream_emiss_intensity <- function(prj,all_emissions,regions,multiple_incumbent_subsectors,incumbent_techs,outputs){  
   ccoef <- read_csv('input/ccoef_mapping.csv')

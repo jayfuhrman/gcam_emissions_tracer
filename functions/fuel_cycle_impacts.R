@@ -6,7 +6,7 @@ library(stringr)
 library(readr)
 library(ggplot2)
 
-end_use = 'process heat cement'
+#end_use = 'cement'
 
 emissions_fuel_cycle <- function(all_emissions,end_use){
   
@@ -71,7 +71,7 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
            transformation = if_else(transformation == paste0('process heat cement') & ghg %in% c('CH4', 'N2O'), 'process heat',transformation),
            enduse = end_use)
   
-  ccoef_mapping <- read_csv('input/ccoef_mapping.csv') %>%
+  ccoef_mapping <- read_csv('../input/ccoef_mapping.csv') %>%
     mutate(PrimaryFuelCO2Coef = if_else(fuel == 'biomass',0,PrimaryFuelCO2Coef)) %>%
     rename(input = PrimaryFuelCO2Coef.name)
   
@@ -193,9 +193,132 @@ emissions_fuel_cycle <- function(all_emissions,end_use){
                                              if_else(str_detect(Units.y,'Mt'),'gram', NA_character_)))),
            value = value.x / value.y) %>%
     group_by(scenario,region,year,enduse,technology,ghg,transformation,Units.x,Units.y,phase,CWF_Sector) %>%
-    summarize(value = sum(value)) %>%
+    mutate(value = sum(value)) %>%
     ungroup()
   
   return(fuel_cycle_emiss)
   
 }
+
+
+energy_water_fuel_cycle_impacts <- function(end_use,energy_water_tracing){
+  
+  en_water_tracing <- energy_water_tracing %>%
+    filter(enduse == end_use) %>%
+    mutate(input = if_else(transformation == enduse,primary,transformation),
+           input = if_else(input == 'biophysical water consumption', 'total biomass', input),
+           input = if_else(input %in% c('water consumption','water withdrawals','seawater'),'upstream water coal biomass',input))
+  
+  outputs_by_tech <- rgcam::getQuery(prj, "outputs by tech") %>%
+    mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector)) %>% 
+    filter(sector == end_use,
+           year >= 2005) %>%
+    rename(enduse = sector) %>%
+    mutate(year = as.numeric(year))
+  
+  inputs_by_tech <- rgcam::getQuery(prj, "inputs by tech") %>%
+    mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector),
+           input = if_else(str_detect(input,'elect_'),'electricity',
+                           if_else(str_detect(input,'refined liquids'),'refining',input)),
+           input = if_else(str_detect(input,'coal'),'coal',
+                           if_else(str_detect(input,'gas'),'gas processing',
+                                   if_else(str_detect(input,'biomass'),'total biomass',input)))) %>% 
+    filter(sector == end_use,
+           year >= 2005) %>%
+    rename(enduse = sector) %>%
+    mutate(year = as.numeric(year)) %>%
+    group_by(Units,scenario,region,year,enduse,input) %>%
+    mutate(frac_of_input_in_tech = value / sum(value)) %>%
+    ungroup()
+  
+  if (end_use %in% c('cement')){
+    
+    inputs_by_tech <- rgcam::getQuery(prj, "inputs by tech") %>%
+      mutate(sector = if_else(str_detect(sector,'trn_'),subsector,sector),
+             input = if_else(str_detect(input,'elect_'),'electricity',
+                             if_else(str_detect(input,'refined liquids'),'refining',input)),
+             input = if_else(str_detect(input,'coal'),'coal',
+                             if_else(str_detect(input,'gas'),'gas processing',
+                                     if_else(str_detect(input,'biomass'),'total biomass',input)))) %>% 
+      filter(sector %in% c(end_use,paste0('process heat ',end_use)),
+             year >= 2005) %>%
+      rename(enduse = sector) %>%
+      mutate(year = as.numeric(year)) %>%
+      mutate(enduse = end_use)
+    
+    process_heat_input_for_disag <- getQuery(prj,'inputs by tech') %>%
+      filter(input == paste0('process heat ',end_use)) %>%
+      group_by(scenario,region,year) %>%
+      mutate(input_frac = value / sum(value)) %>%
+      ungroup() %>%
+      select(scenario,region,year,technology,input_frac)
+    
+    process_heat_disag <- inputs_by_tech %>%
+      filter(enduse %in% c('cement') & !str_detect(technology,'cement')) %>%
+      select(-technology) %>%
+      left_join(process_heat_input_for_disag, by = c('scenario','region','year')) %>%
+      mutate(value = value * input_frac) %>%
+      select(-input_frac)
+    
+    inputs_by_tech <- inputs_by_tech %>%
+      filter(!(enduse %in% c('cement') & !str_detect(technology,'cement')),
+             input != paste0('process heat ', enduse)) %>%
+      bind_rows(process_heat_disag) %>%
+      mutate(subsector = 'cement') %>%
+      group_by(Units,scenario,region,year,enduse,input) %>%
+      mutate(frac_of_input_in_tech = value / sum(value)) %>%
+      ungroup() 
+    
+  }
+  
+
+  
+  coal_bio_for_water_disag <- inputs_by_tech %>%
+    select(-frac_of_input_in_tech) %>%
+    filter(input %in% c('coal','total biomass')) %>%
+    group_by(scenario,region,year,enduse,input) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    group_by(scenario,region,year,enduse) %>%
+    mutate(en_input_frac = value / sum(value)) %>%
+    ungroup()
+  
+  en_water_tracing_no_upstream_water <- en_water_tracing %>%
+    filter(input != 'upstream water coal biomass')
+  
+  upstream_water <- en_water_tracing %>%
+    filter(input == 'upstream water coal biomass') 
+  
+  upstream_water_disag <- upstream_water %>%
+    select(-input) %>%
+    left_join(coal_bio_for_water_disag %>% select(-value), by = c('scenario','region','year','enduse')) %>%
+    mutate(value = value * en_input_frac) %>%
+    select(-en_input_frac)
+  
+  energy_water_for_disag <- bind_rows(upstream_water_disag,en_water_tracing_no_upstream_water) %>%
+    filter(year >= 2005,
+           input %in% inputs_by_tech$input)
+  
+  disag_en_water <- energy_water_for_disag %>%
+    left_join(inputs_by_tech %>% select(-value,-Units),by = c('scenario','region','year','enduse','input')) %>%
+    mutate(value = value * frac_of_input_in_tech) %>%
+    select(-frac_of_input_in_tech,-input)
+  
+  
+  en_water_fuel_cycle_impacts <- disag_en_water %>%
+    left_join(outputs_by_tech, by = c('scenario','region','year','enduse','technology','subsector')) %>%
+    mutate(value.x = value.x * 10^9,
+           Units.x = if_else(Units.x == 'km^3','m^3',
+                             if_else(Units.x == 'EJ','GJ',Units.x)),
+           value.y = if_else(Units.y %in% c('million pass-km','million ton-km','Mt'), value.y * 10^6, value.y), #convert million km to km; else convert EJ to MJ; million tons to tonnes
+           Units.y = if_else(Units.y == 'million pass-km', 'pass-km',
+                             if_else(Units.y == 'million ton-km', 'ton-km',
+                                     if_else(Units.y == 'Mt','tonne',Units.y))),
+           value = value.x / value.y,
+           Units = paste0(Units.x,' per ',Units.y))
+  
+  return(en_water_fuel_cycle_impacts)
+  
+}
+
+
