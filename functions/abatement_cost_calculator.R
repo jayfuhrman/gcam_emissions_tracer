@@ -2,7 +2,8 @@ library('gcamdata')
 
 get_upstream_emiss_intensity <- function(prj,all_emissions,regions,multiple_incumbent_subsectors,incumbent_techs,outputs){  
   ccoef <- read_csv('input/ccoef_mapping.csv')
-  
+  all_emissions <- all_emissions %>% pivot_longer(cols = c(`2005`:`2050`),names_to = 'year') %>%
+    mutate(year = as.numeric(year))
   
   upstream_emiss <- all_emissions %>%
     filter(ghg == 'CO2',

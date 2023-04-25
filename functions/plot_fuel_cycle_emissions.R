@@ -10,10 +10,22 @@ library("ggplot2")
 library("gridExtra")
 
 library(ggsankey)
+library(jgcricolors)
 
 
-setwd('C:/Users/fuhr472/Documents/gcam_emissions_tracer/figures')
+FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/gcam_emissions_tracer/'
+QUERY_RESULTS_LOCATION <- '/output/GCAM-HFTO_CCS_BIO.dat'
+
+
+prj <- rgcam::loadProject(paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION))
+print("Data file opened.")
+all_emissions <- read_csv(paste0(FOLDER_LOCATION,'output/emissions.csv'))
+
+
+setwd('C:/Users/fuhr472/Documents/gcam_emissions_tracer/functions')
 source('fuel_cycle_impacts.R')
+
+
 
 
 plot_fuel_cycle_emiss <- function(enduse,emiss_type,region_,years,scenarios){
@@ -61,7 +73,8 @@ plot_fuel_cycle_emiss <- function(enduse,emiss_type,region_,years,scenarios){
     nonghg <- fuel_cycle_emiss %>%
       filter(region == region_,
              scenario %in% scenarios,
-             year %in% years)
+             year %in% years,
+             !ghg %in% c('PM10','PM2.5'))
     
     p <- ggplot(nonghg) + 
       theme_light() + 
@@ -74,7 +87,7 @@ plot_fuel_cycle_emiss <- function(enduse,emiss_type,region_,years,scenarios){
       scale_fill_npg()
     
     filename = paste0(enduse,region_,emiss_type,".png")
-    ggsave(filename = filename,width = 6, height = 8)
+    ggsave(filename = filename)
     
     
   } else{
