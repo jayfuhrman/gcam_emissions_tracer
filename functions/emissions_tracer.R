@@ -589,8 +589,6 @@ fuel_distributor <- function(prj){
     # Add in sector types
     left_join(sector_types, by = "sector")
   
-  #write_csv(input_tracing,'input_tracing.csv')
-  
   print("Data ready for distribution.")
   
   ###################  Input Distributing  ###################  
@@ -598,14 +596,6 @@ fuel_distributor <- function(prj){
   #
   primary_remove_df <- input_tracing %>%
     filter(input %in% primary_remove)
-  
-  # single_use_sectors <- input_tracing %>%
-  #   filter(sector %in% primary_remove_df$sector) %>% 
-  #   group_by(scenario, region, sector, year) %>%
-  #   count() %>%
-  #   filter(n == 1,
-  #          sector != "regional biomass") %>%
-  #   ungroup()
   
   single_use_sectors <- input_tracing %>%
     filter(sector %in% primary_remove_df$sector) %>% 
@@ -633,10 +623,7 @@ fuel_distributor <- function(prj){
                                     if_else(input == 'crude oil', 'regional oil', NA_character_)))) %>%
     select(scenario,region,sector,year,input,value,type)
   
-  #write_csv(input_tracing,'input_tracing.csv')
-  
   # Next, want to get rid of passthru sectors that only have 1 input
-  #
   
   # Get ratio of sector in each input
   in_ratio <- global_inputs %>%
@@ -658,7 +645,6 @@ fuel_distributor <- function(prj){
               ratio = sum(ratio)) %>%
     ungroup()
   
-  #write_csv(in_ratio,'in_ratio.csv')
   # If ratio = 1 and input is not a primary input, 
   # replace sectors with input name with downstream sector name and type,
   # then delete downstream row
@@ -693,8 +679,6 @@ fuel_distributor <- function(prj){
     group_by(scenario, region, year) %>%
     group_modify(~upstream_replacer(.), keep=TRUE) %>%
     ungroup()
-  
-  #write_csv(in_replace_upstream,'3_in_replace_upstream.csv')
   
   print("Upstream passthru sectors replaced")
   
@@ -750,7 +734,6 @@ fuel_distributor <- function(prj){
     group_by(scenario, region, year) %>%
     group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
     ungroup() 
-  
   
   print("Transformation sectors removed as inputs to other transformations")
   
