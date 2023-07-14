@@ -999,7 +999,6 @@ lifecycle_CO2_emiss_phase_disag <- function(df){
   return(df_lifecycle_disag)
 }
 
-
 final_fuel_CO2_disag <- function(all_emissions){
   
   sectors <- read_csv('input/sector_label.csv')
@@ -1942,9 +1941,6 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
   }
   return(seq3)
 }
-
-
-
 
 # emissions calculation
 emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_aggregation, wide = TRUE){
