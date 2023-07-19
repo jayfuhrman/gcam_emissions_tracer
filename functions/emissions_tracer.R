@@ -462,47 +462,7 @@ energy_water_distributor <- function(prj){
     filter(sector != 'elect_td_H2') 
   
   }
-  
-  #may be able to move into transform distributor function
-  # in_primary_init <- in_primary %>%
-  #   mutate(input = if_else(str_detect(sector,'H2 ') & str_detect(input,'elect_'),'elect_td_H2',input))
-  # 
-  # H2_elec <- in_primary %>%
-  #   filter((str_detect(input,'elect') & str_detect(sector,'H2 ')) | str_detect(input,'elect_td_H2'))
-  # 
-  # elect_disag <- in_primary %>%
-  #   filter(sector %in% H2_elec$input) %>%
-  #   mutate(type = if_else(str_detect(input,'_water withdrawals'),paste0(type,'_water withdrawals'),
-  #                         if_else(str_detect(input,'_water consumption'),paste0(type,'_water consumption'),
-  #                         paste0(type,' energy')))) %>%
-  #   group_by(scenario,region,year,sector,type,Units) %>%
-  #   mutate(ratio = value / sum(value)) %>%
-  #   ungroup() %>%
-  #   mutate(type = 'transformation')
-  # 
-  # disag_elec_H2 <- H2_elec %>%
-  #   mutate(type = 'transformation',
-  #          input = 'elect_td_H2') %>%
-  #   select(-Units) %>%
-  #   left_join(elect_disag, by = c('scenario','region','year','type','input'='sector')) %>%
-  #   select(-input) %>%
-  #   rename(input = input.y) %>%
-  #   mutate(value =  value.x * ratio,
-  #          sector = if_else(sector == 'other industry','H2 industrial',sector))
-  # 
-  # tmp <- in_primary %>%
-  #   filter(!(str_detect(input,'elect') & str_detect(sector,'H2 '))) # all electricity upstream footprint is now included in corresponding H2 sectors
-  # 
-  # in_primary <- tmp %>% 
-  #   bind_rows(disag_elec_H2) %>%
-  #   group_by(scenario,region,year,sector,input,type,Units) %>%
-  #   summarize(value = sum(value)) %>%
-  #   ungroup()
-  
-  
-  
-  
-  
+
   print("Transformation sectors removed as inputs to other transformations")
   
   # Now need to separate transformation from enduse
