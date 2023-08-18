@@ -1718,7 +1718,8 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
            fuel = if_else(fuel %in% c('mobile','stationary'),technology,fuel),
            fuel = if_else(sector %in% c('iron and steel'),technology,fuel),
            sector = if_else(sector == 'process heat cement','cement',sector)) %>%
-    filter(!(sector %in% c('H2 central production','H2 forecourt production','electricity','refining','district heat','H2 wholesale dispensing'))) %>% #filter out transformation sector as these will be dealt with separately
+    filter(!(sector %in% c('H2 retail dispensing','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing','elect_td_H2','H2 enduse',
+                           'electricity','refining','district heat'))) %>% #filter out transformation sector as these will be dealt with separately
     group_by(scenario,region,sector,ghg,year) %>%
     mutate(normfrac = value / sum(value)) %>%
     ungroup() %>%
@@ -1772,11 +1773,13 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
   
   
   other_emiss_transform_for_disag <- all_other_emiss %>%
-    filter(direct %in% c('H2 production','H2 central production','H2 wholesale dispensing','electricity','refining','district heat') & ghg %in% c('CH4','N2O')) %>%
+    filter(direct %in% c('H2 retail dispensing','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing','elect_td_H2',
+                         'electricity','refining','district heat') & ghg %in% c('CH4','N2O')) %>%
     rename(sector = direct)
   
   all_other_emiss_no_transform_combustion <- all_other_emiss %>%
-    filter(!(direct %in% c('H2 production','H2 wholesale dispensing','H2 central production','electricity','refining','district heat') & ghg %in% c('CH4','N2O')))
+    filter(!(direct %in% c('H2 retail dispensing','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing','elect_td_H2','H2 enduse',
+                           'electricity','refining','district heat') & ghg %in% c('CH4','N2O')))
   
   #write_csv(all_other_emiss_no_transform_combustion,'all_other_emiss_no_transform_combustion.csv')
   
@@ -1784,7 +1787,8 @@ final_fuel_nonCO2_disag <- function(all_emissions) {
   
   nonCO2_emissions_by_tech_transform <- nonCO2_emissions_by_tech %>%
     #    rename(ghg = GHG) %>%
-    filter(ghg %in% c('CH4','N2O') & sector %in% c('H2 central production','H2 forecourt production','H2 wholesale dispensing','electricity','district heat','refining')) %>%
+    filter(ghg %in% c('CH4','N2O') & sector %in% c('H2 retail dispensing','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing','elect_td_H2','H2 enduse',
+                                                   'electricity','district heat','refining')) %>%
     mutate(fuel = if_else(subsector %in% c('biomass','biomass liquids'),'biomass',
                           if_else(subsector %in% c('coal','coal to liquids'),'coal',
                                   if_else(subsector %in% c('gas','gas to liquids'),'natural gas',subsector)))) %>%
@@ -1965,7 +1969,7 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     mutate(value = if_else(is.na(value),0,value)) %>%
     mutate(phase = if_else(transformation %in% c('electricity','H2 enduse','gas processing','refining'),'midstream','enduse')) %>%
     mutate(ghg = if_else(enduse %in% c('chemical feedstocks','industrial feedstocks','construction feedstocks'),'Feedstock embedded carbon',ghg)) %>%
-    mutate(transformation = if_else(transformation %in% c('H2 enduse','H2 central production','H2 wholesale dispensing'),'H2 production',transformation),
+    mutate(transformation = if_else(transformation %in% c('H2 enduse','H2 retail dispensing','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing','elect_td_H2'),'H2 production',transformation),
            transformation = if_else(direct == 'limestone','calcination',transformation),
            direct = if_else(direct == 'limestone','Non-energy',direct)) %>%
     left_join(cwf_mapping,by = c('enduse'))
@@ -2079,7 +2083,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   if (any(str_detect('H2 enduse',transform_division$transformation))){
     
     ghg_rewrite <- ghg_rewrite %>%
-      mutate(direct = if_else(direct %in% c('H2 central production','H2 forecourt production'), 'H2 enduse', direct)) %>%
+      mutate(direct = if_else(direct %in% c('H2 central production','H2 forecourt production','H2 retail delivery','H2 retail dispensing','H2 wholesale dispensing','elect_td_H2'), 'H2 enduse', direct)) %>%
       group_by(Units,scenario,region,year,type,direct,ghg) %>%
       summarize(value = sum(value)) %>%
       ungroup()
