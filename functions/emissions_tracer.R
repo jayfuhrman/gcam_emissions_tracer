@@ -112,34 +112,45 @@ passthru_remove <- function(df, remaining_passthru = NULL){
 # remove transformation sectors from inputs of other transformations
 transform_distributer <- function(df, transform_sectors){
 
+  in_passthru_remove_ <- df %>%
+    filter(!(input %in% transform_sectors)) %>%
+    group_by(scenario,region,year,input,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
   
   for (transform in transform_sectors){
     inputs <- (df %>% filter(sector == transform))$input
-    inputs_to_expand <- dplyr::intersect(inputs, c(transform_sectors,'elect_td_H2'))
+    inputs_to_expand <- dplyr::intersect(inputs, c(transform_sectors))
     
     for (inp in inputs_to_expand){
+      
+      df_init <- df
+      
       sector_input <- df %>%
         filter(sector == transform,
                input == inp)
       
-      tmp <- df %>%
+      total <- df %>%
         filter(input == inp)
       
-      total <- sum(tmp$value)
+      total <- sum(total$value)
       
-      elect_for_H2 <- df %>% filter(sector == inp & str_detect(sector,'H2 ') & !str_detect(sector,'elect_'),
-                                    str_detect(input,'elect'))
+      # get inputs to sector
       input_df <- df %>%
         filter(sector == inp,
                !(input %in% transform_sectors)) %>%
-        bind_rows(elect_for_H2) %>%
+        #bind_rows(elect_for_H2) %>%
         mutate(ratio = value / total) %>%
-        select(scenario, region, input, year, ratio, Units)
+        #select(scenario, region, input, year, ratio, Units) %>%
+        group_by(scenario,region,year,input,Units) %>%
+        summarize(ratio = sum(ratio)) %>%
+        ungroup() 
       
       to_expand <- sector_input %>%
         select(scenario, region, sector, year, type, value) %>%
         right_join(input_df, by = c("scenario", "region", "year") ) %>%
-        mutate(value = value * ratio)
+        mutate(value = value * ratio,
+               elec_for_H2 = if_else(str_detect(transform,'H2 ') & str_detect(inp,'elect_'),TRUE,FALSE))
       
       ####
       # Need to subtract any resource that goes into other transformation from original transform sector
@@ -147,19 +158,50 @@ transform_distributer <- function(df, transform_sectors){
       subtract_from_upstream <- df %>%
         filter(sector == inp,
                !(input %in% transform_sectors)) %>%
+        #select(-elec_for_H2) %>%
         left_join(to_expand, by = c("scenario", "region", "input", "year", "Units")) %>%
-        mutate(value = value.x - value.y) %>%
-        select(scenario, region, year, input, sector = sector.x, type = type.x, value, Units)
+        mutate(value = value.x - value.y,
+               elec_for_H2 = if_else(elec_for_H2.x == TRUE, TRUE, FALSE)) %>%
+        select(scenario, region, year, input, sector = sector.x, type = type.x, value, Units,elec_for_H2) 
       
       df <- df %>% 
         filter(!(input == inp & sector == transform)) %>%
         bind_rows(to_expand) %>%
         filter(!(sector == inp & !(input %in% transform_sectors))) %>%
         bind_rows(subtract_from_upstream) %>%
-        group_by(scenario, region, input, sector, type, year, Units) %>%
+        group_by(scenario, region, input, sector, type, year, Units,elec_for_H2) %>%
         summarise(value = sum(value)) %>%
         ungroup()
       
+      df_ <- df %>%
+        filter(!(input %in% transform_sectors)) %>%
+        group_by(scenario,region,year,input,Units) %>%
+        summarize(value = sum(value)) %>%
+        ungroup() %>%
+        left_join(in_passthru_remove_, by = c('scenario','region','year','input','Units')) %>%
+        mutate(value = value.x - value.y,
+               fuel_mismatch = if_else(abs(value) > 1e-6, TRUE,FALSE)) %>%
+        filter(fuel_mismatch == TRUE) %>%
+        mutate(sector = transform,
+               type = 'transformation',
+               elec_for_H2 = if_else(str_detect(transform,'H2 ') & str_detect(inp,'elect_'),TRUE,FALSE)) %>%
+        select(colnames(df))
+      
+      if(nrow(df_) > 0){
+
+        #print('warning: sumcheck mismatch in transform_distributer, adding back error term')
+        #print(paste0('transform = ',transform))
+        #print(paste0('inp = ',inp))
+        
+        df <- df %>%
+          bind_rows(df_ %>%
+                      mutate(value = -value)) %>%
+          group_by(scenario,region,year,input,sector,type,Units,elec_for_H2) %>%
+          summarize(value = sum(value)) %>%
+          ungroup()
+        
+      }
+        
     }
   }
   return(df %>% select(-scenario, -region, -year))
@@ -188,49 +230,49 @@ energy_water_distributor <- function(prj){
   ###### H2 electricity breakout ###### 
   
   # create separate sector name for electricity used for producing and distributing H2
-   elec_H2_prod_dist <- input %>%
-     filter(str_detect(sector,'H2') & str_detect(input,'elect_td_'))
-  
-   elect_td_inputs <- input %>%
-     filter(str_detect(input,'elect_td_')) %>%
-     group_by(scenario,region,year,input) %>%
-     summarize(value = sum(value)) %>%
-     ungroup()
-  
-   elect_td_sectors <- input %>%
-     filter(str_detect(sector,'elect_td_')) %>%
-     group_by(scenario,region,year,sector) %>%
-     summarize(value = sum(value)) %>%
-     ungroup()
-  
-   elect_td_loss_ratios_for_scaleup <- elect_td_inputs %>%
-     left_join(elect_td_sectors,by = c('scenario','region','year','input' = 'sector')) %>%
-     mutate(ratio = value.y / value.x)
-  
-   elec_net_own_use_H2 <- elec_H2_prod_dist %>%
-     left_join(elect_td_loss_ratios_for_scaleup, by = c('scenario','region','year','input')) %>%
-     mutate(value = value * ratio,
-            input = 'electricity_net_ownuse',
-            sector = 'elect_td_H2',
-            subsector = 'elect_td_H2') %>%
-     select(-value.x,-value.y,-ratio)
-  
-   elec_H2_prod_dist <- elec_H2_prod_dist %>%
-     mutate(input = 'elect_td_H2')
-
-   #create dataframe to subtract out H2 related electricity from corresponding sectors
-   subtract_H2_elec <- input %>%
-     filter(str_detect(sector,'H2') & str_detect(input,'elect_td')) %>%
-     mutate(value = -value)
-
-   input <- input %>%
-     bind_rows(elec_net_own_use_H2,elec_H2_prod_dist,subtract_H2_elec) %>%
-     group_by(scenario,region,year,sector,subsector,input,Units) %>%
-     summarize(value = sum(value)) %>%
-     ungroup() %>%
-     filter(value != 0)
-  
-   print("Electricity demand for hydrogen production and distribution broken out")
+   # elec_H2_prod_dist <- input %>%
+   #   filter(str_detect(sector,'H2') & str_detect(input,'elect_td_'))
+   # 
+   # elect_td_inputs <- input %>%
+   #   filter(str_detect(input,'elect_td_')) %>%
+   #   group_by(scenario,region,year,input) %>%
+   #   summarize(value = sum(value)) %>%
+   #   ungroup()
+   # 
+   # elect_td_sectors <- input %>%
+   #   filter(str_detect(sector,'elect_td_')) %>%
+   #   group_by(scenario,region,year,sector) %>%
+   #   summarize(value = sum(value)) %>%
+   #   ungroup()
+   # 
+   # elect_td_loss_ratios_for_scaleup <- elect_td_inputs %>%
+   #   left_join(elect_td_sectors,by = c('scenario','region','year','input' = 'sector')) %>%
+   #   mutate(ratio = value.y / value.x)
+   # 
+   # elec_net_own_use_H2 <- elec_H2_prod_dist %>%
+   #   left_join(elect_td_loss_ratios_for_scaleup, by = c('scenario','region','year','input')) %>%
+   #   mutate(value = value * ratio,
+   #          input = 'electricity_net_ownuse',
+   #          sector = 'elect_td_H2',
+   #          subsector = 'elect_td_H2') %>%
+   #   select(-value.x,-value.y,-ratio)
+   # 
+   # elec_H2_prod_dist <- elec_H2_prod_dist %>%
+   #   mutate(input = 'elect_td_H2')
+   # 
+   # #create dataframe to subtract out H2 related electricity from corresponding sectors
+   # subtract_H2_elec <- input %>%
+   #   filter(str_detect(sector,'H2') & str_detect(input,'elect_td')) %>%
+   #   mutate(value = -value)
+   # 
+   # input <- input %>%
+   #   bind_rows(elec_net_own_use_H2,elec_H2_prod_dist,subtract_H2_elec) %>%
+   #   group_by(scenario,region,year,sector,subsector,input,Units) %>%
+   #   summarize(value = sum(value)) %>%
+   #   ungroup() %>%
+   #   filter(value != 0)
+   # 
+   # print("Electricity demand for hydrogen production and distribution broken out")
 
 
   sectors <- input %>% 
@@ -426,44 +468,71 @@ energy_water_distributor <- function(prj){
    
    in_passthru_remove <- in_passthru_remove %>%
      anti_join(energy_for_water,by = c("scenario","region","input","year")) %>%
-     bind_rows(energy_for_water)
+     bind_rows(energy_for_water) %>%
+     mutate(elec_for_H2 = if_else(str_detect(sector,'H2 ') & str_detect(input,'elect_td_') | input == 'elect_td_H2' | sector == 'elect_td_H2',TRUE,FALSE))
+   
     
   print("Remaining passthru sectors replaced")
   
   
   transform_sectors <- c("H2 enduse","H2 retail delivery","H2 retail dispensing","H2 wholesale dispensing","H2 industrial",
-                         "elect_td_H2",
+                         #"elect_td_H2",
                          "elect_td_bld", "elect_td_trn", "elect_td_ind",
                          "district heat", "refined liquids enduse", "refined liquids industrial",
                          "delivered gas","wholesale gas")
 
-  
   in_primary <- in_passthru_remove %>%
     group_by(scenario, region, year) %>%
     group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
     ungroup() 
   
-  in_primary <- in_primary %>%
-    mutate(input = if_else(str_detect(sector,'H2 ') & str_detect(input,'elect_'),'elect_td_H2',input),
-           sector = if_else(input == 'elect_td_H2' & !str_detect(sector,'H2 '),'H2 industrial',sector),
-           input = if_else(input == 'elect_td_H2' & sector == 'H2 industrial', 'elect_td_ind',input)) 
-  
+
   remaining_transform_sectors <- in_primary %>%
     filter(sector %in% transform_sectors & input %in% transform_sectors)
   
   remaining_transform_sectors <- remaining_transform_sectors$sector
   
-  if (length(remaining_transform_sectors) > 0) {
+  count = 0 
+  
+  while (length(remaining_transform_sectors) > 0) {
     
-  in_primary <- in_primary %>%
-    group_by(scenario, region, year) %>%
-    group_modify(~transform_distributer(., remaining_transform_sectors), keep=TRUE) %>%
-    ungroup() %>%
-    filter(sector != 'elect_td_H2') 
+    in_primary <- in_primary %>%
+      group_by(scenario, region, year) %>%
+      group_modify(~transform_distributer(., remaining_transform_sectors), keep=TRUE) %>%
+      ungroup() 
+    
+    remaining_transform_sectors <- in_primary %>%
+      filter(sector %in% transform_sectors & input %in% transform_sectors)
+    
+    remaining_transform_sectors <- remaining_transform_sectors$sector
+    
+    count = count + 1
   
   }
+  
+  #clean up negative values from H2 industrial into elec and vice versa
+  in_primary <- in_primary %>%
+    mutate(elec_for_H2 = if_else(value < 0 & elec_for_H2 == FALSE, TRUE,
+                                 if_else(value <0 & elec_for_H2 == TRUE, FALSE,
+                                         elec_for_H2))) %>%
+    group_by(scenario,region,year,input,sector,type,Units,elec_for_H2) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
+  
+  H2_inputs <- in_passthru_remove %>%
+    filter(str_detect(sector,'H2'),
+           input %in% in_primary$input,
+           !(input %in% in_passthru_remove$sector))
+  
+  #if inputs found that are not directly used for H2 production, they must be from electricity that is then used to produce H2
+  in_primary <- in_primary %>%
+    mutate(elec_for_H2 = if_else(str_detect(sector,'H2') & !(input %in% H2_inputs$input),TRUE, elec_for_H2))
+  
 
   print("Transformation sectors removed as inputs to other transformations")
+  if (count > 0){
+    print(paste0(count,' additional iterations required to remove all transformation to transformation inputs'))
+  }
   
   # Now need to separate transformation from enduse
   # Apportion primary -> transformation -> enduse
@@ -476,11 +545,12 @@ energy_water_distributor <- function(prj){
     rename(enduse = sector) %>% 
     group_by(scenario, region, input, year, Units) %>%
     mutate(ratio_enduse_in_input = value / sum(value)) %>%
-    ungroup()
+    ungroup() %>%
+    select(-elec_for_H2)
   
   # Get ratio of input in each transformation sector
   transform_df <- transform_df %>% 
-    group_by(scenario, region, sector, year, Units) %>%
+    group_by(scenario, region, sector, year, Units,elec_for_H2) %>%
     mutate(ratio_primary_in_trans = value / sum(value)) %>%
     ungroup() %>%
     rename(transformation = sector, primary = input) %>%
@@ -492,7 +562,8 @@ energy_water_distributor <- function(prj){
            input == "regional natural gas") %>%
     mutate(input = "natural gas",
            enduse = sector) %>%
-    select(scenario, region, year, primary = input, transformation = sector, enduse, value, Units)
+    select(scenario, region, year, primary = input, transformation = sector, enduse, value, Units) %>%
+    mutate(elec_for_H2 = FALSE)
   
   # Expand all transformation inputs in enduse_df to get primary inputs
   final_df <- enduse_df %>%
@@ -500,7 +571,7 @@ energy_water_distributor <- function(prj){
     mutate(primary = if_else(is.na(primary), input, primary),
            value = if_else(is.na(value.y), value.x, value.y * ratio_enduse_in_input),
            input = if_else(input==primary, enduse,input)) %>%
-    select(scenario, region, year, primary, transformation = input, enduse, value) %>%
+    select(scenario, region, year, primary, transformation = input, enduse, value,elec_for_H2) %>%
     bind_rows(gas_in_unconventional_oil)
   
   # Group electricity, refining, gas processing, H2 production
@@ -513,11 +584,43 @@ energy_water_distributor <- function(prj){
                                     "gas processing", transformation),
            primary = if_else(str_detect(primary,'_water consumption'),'water consumption', primary),
            primary = if_else(str_detect(primary,'_water withdrawals'),'water withdrawals', primary),
-           Units = if_else(primary %in% c('water consumption','water withdrawals','biophysical water consumption','seawater'),'km^3','EJ')) %>%
-    group_by(scenario, region, year, primary, transformation, enduse, Units) %>%
+           Units = if_else(primary %in% c('water consumption','water withdrawals','biophysical water consumption','seawater'),'km^3','EJ'),
+           elec_for_H2 = if_else(is.na(elec_for_H2),FALSE,elec_for_H2)) %>%
+    group_by(scenario, region, year, primary, transformation, enduse, Units,elec_for_H2) %>%
     summarise(value = sum(value)) %>%
     ungroup()
+  
+  H2_wholesale_for_disag <- final_df %>%
+    filter(transformation == 'H2 wholesale dispensing')
+  
+  H2_wholesale_input <- input %>%
+    filter(input == 'H2 wholesale dispensing') %>%
+    group_by(scenario,region,year) %>%
+    mutate(ratio_to_retail_disp = value / sum(value)) %>%
+    ungroup() %>%
+    filter(sector == 'H2 retail dispensing') %>%
+    select(scenario,region,year,input,ratio_to_retail_disp)
+  
+  disag_H2_wholesale <- H2_wholesale_for_disag %>%
+    left_join(H2_wholesale_input,by = c('scenario','region','year','transformation'='input')) %>%
+    mutate(H2_retail = value * ratio_to_retail_disp,
+           H2_wholesale = value * (1-ratio_to_retail_disp))
+  
+  final_df = final_df %>%
+    filter(transformation != 'H2 wholesale dispensing') %>%
+    bind_rows(disag_H2_wholesale %>%
+                mutate(transformation = 'H2 retail dispensing',
+                       value = H2_retail) %>% 
+                select(colnames(final_df)),
+              disag_H2_wholesale %>%
+                mutate(transformation = 'H2 wholesale dispensing',
+                       value = H2_wholesale) %>% 
+                select(colnames(final_df))) %>%
+    group_by(scenario,region,year,primary,transformation,enduse,Units,elec_for_H2) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
 
+  
 
   #####
   
@@ -526,9 +629,9 @@ energy_water_distributor <- function(prj){
     group_by(scenario, region, year, primary) %>%
     mutate(ratio_enduse_in_primary = value / sum(value)) %>%
     # Get ratio of enduse in transformation 
-    group_by(scenario, region, year, transformation) %>%
+    group_by(scenario, region, year, transformation, Units, elec_for_H2) %>%
     mutate(ratio_enduse_in_transformation = value / sum(value)) %>%
-    ungroup()
+    ungroup() 
   
   print("Final distributions calculated.")
   
@@ -888,7 +991,7 @@ fuel_distributor <- function(prj){
     # Get ratio of enduse in transformation 
     group_by(scenario, region, year, transformation) %>%
     mutate(ratio_enduse_in_transformation = value / sum(value)) %>%
-    ungroup()
+    ungroup() 
   
   print("Final distributions calculated.")
   
@@ -932,6 +1035,74 @@ fuel_distributor <- function(prj){
   
   return(final_df)
 }
+
+H2_tracer <- function(final_df){
+  ####Disentangle the H2 web...
+  if (!any(str_detect('H2 enduse',final_df$transformation))){
+    fuel_tracing <- final_df
+    
+    outputs_by_subsector <- rgcam::getQuery(prj,'outputs by tech')   %>%
+      group_by(scenario,region,year,sector,subsector,output,Units) %>%
+      summarize(value = sum(value)) %>%
+      ungroup()
+    
+    H2_forecourt_sectors <-  outputs_by_subsector %>%
+      filter(subsector == 'forecourt production') %>%
+      distinct(sector)
+    
+    H2_central_frac <- outputs_by_subsector %>%
+      filter(sector %in% H2_forecourt_sectors$sector) %>%
+      group_by(scenario,region,year,sector) %>%
+      mutate(central_production_frac = if_else(subsector == 'forecourt production',1-value/sum(value),value/sum(value))) %>%
+      ungroup() %>%
+      rename(transformation = sector) %>%
+      select(scenario,region,year,transformation,central_production_frac) %>%
+      distinct(scenario,region,year,transformation,.keep_all = TRUE)
+    
+    fuel_tracing_fix_H2 <- fuel_tracing %>%
+      filter(str_detect(transformation,'H2')) %>%
+      mutate(transformation = if_else(transformation == 'H2 retail dispensing','H2 wholesale dispensing',transformation))
+    
+    fuel_tracing_fix_H2_wholesale_dispensing <- fuel_tracing_fix_H2 %>%
+      filter(transformation == 'H2 wholesale dispensing') %>%
+      left_join(H2_central_frac,by = c('scenario','region','year','transformation'))
+    
+    fuel_tracing_wholesale_dispensing_forecourt <- fuel_tracing_fix_H2_wholesale_dispensing %>%
+      mutate(value = value * (1-central_production_frac)) %>%
+      select(-central_production_frac)
+    
+    fuel_tracing_wholesale_dispensing_central <- fuel_tracing_fix_H2_wholesale_dispensing %>%
+      mutate(value = value * central_production_frac,
+             transformation = 'H2 central production') %>%
+      select(-central_production_frac)
+    
+    fuel_tracing_central <- fuel_tracing_fix_H2 %>%
+      filter(transformation %in% c('H2 industrial','H2 retail delivery')) %>%
+      mutate(transformation = 'H2 central production')
+    
+    fuel_tracing_FIXED_H2 <- bind_rows(fuel_tracing_wholesale_dispensing_central,fuel_tracing_wholesale_dispensing_forecourt,fuel_tracing_central)
+    
+    fuel_tracing_no_H2 <- fuel_tracing %>%
+      filter(!str_detect(transformation,'H2')) %>%
+      bind_rows(fuel_tracing %>% filter(transformation == 'H2 enduse')) #add back H2 enduse for backwards compatibility
+    
+    final_df <- bind_rows(fuel_tracing_no_H2,fuel_tracing_FIXED_H2)
+    return(final_df)
+  } 
+  #####
+  
+  final_df <- final_df %>%
+    # Get ratio of enduse in primary
+    group_by(scenario, region, year, primary) %>%
+    mutate(ratio_enduse_in_primary = value / sum(value)) %>%
+    # Get ratio of enduse in transformation 
+    group_by(scenario, region, year, transformation) %>%
+    mutate(ratio_enduse_in_transformation = value / sum(value)) %>%
+    ungroup()
+  
+  print("Final distributions calculated.")
+}
+
 
 lifecycle_CO2_emiss_phase_disag <- function(df){
   
@@ -1991,7 +2162,6 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
   #
   # First replace transport sector emissions with subsector emissions
   #
-  
   # Get all transport nonCO2 emissions
   trn_nonco2 <- nonCO2 %>%
     filter(stringr::str_detect(sector, "^trn_"), 
@@ -2061,7 +2231,8 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     group_by(Units, scenario, region, year, type, rewrite, ghg) %>%
     summarise(value = sum(value)) %>%
     ungroup() %>%
-    rename(direct = rewrite)
+    rename(direct = rewrite) %>%
+    filter(ghg != 'H2')
   
   # Enduse sectors are fine as is - just need to add passthrough and enduse columns
   enduse <- ghg_rewrite %>%
@@ -2069,7 +2240,6 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
     mutate(transformation = direct,
            enduse = direct) %>%
     select(-type)
-  
   
   # Transformation sectors need to be distributed to enduse
   transform_division <- fuel_tracing %>%
@@ -2175,8 +2345,6 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
       
     write_csv(joined_emiss,'DEBUG_joined_initial_disag.csv')
     
-    #write_csv(all_emissions_rus,'DEBUG_initial_disag_emissions.csv')
-    #write_csv(filter(ghg, year > 1990),'DEBUG_original_emiss.csv')
     
     all_emissions_rus_grouped <- all_emissions_rus %>%
       group_by(scenario,region,year,ghg) %>%
@@ -2200,12 +2368,7 @@ emissions <- function(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_ag
       mutate(diff = abs(initial_disag - original_emissions)) %>%
       arrange(desc(diff)) %>%
       filter(diff != 0)
-    
-    
   
-    
-    #write_csv(original_left_join_initial_disag,'DEBUG_original_left_join_initial_disag.csv')
-    #write_csv(initial_disag_left_join_original,'DEBUG_initial_disag_left_join_original.csv')
     
     
   } else {
@@ -2421,3 +2584,10 @@ date_remover <- function (x){
   pos <- regexpr(",date", x)
   ifelse(pos > -1L, substr(x, 1, pos - 1L), x)
 }
+
+
+#tmp <- fuel_tracing 
+
+#H2_inputs <- getQuery(prj,'inputs by tech') %>%
+#  filter(str_detect(sector,'H2'),
+#         input %in% c('regional coal','regional biomass','delivered gas','regional natural gas'))
