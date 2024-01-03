@@ -6,14 +6,21 @@ FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/gcam_emissions_tracer/'
 
 RGCAM <- TRUE # True if using rgcam, false if using query file
 
-EMISSIONS_OUTPUT <- 'output/emissions-GCAM_CWF.csv'
+EMISSIONS_OUTPUT <- 'output/emissions-GCAM_HFTO.csv'
 
-LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_CWF.csv'
+LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_HFTO.csv'
 
 WIDE_FORMAT <- TRUE
 
+##### DEBUG TOGGLES FOR A SINGLE REGION AND YEAR #####
+
+DEBUG <- TRUE
+DEBUG_SCENARIO <- 'GCAMnetzero2050green-H2-only'
+DEBUG_REGION <- 'USA'
+DEBUG_YEAR <- 2050
+
 # SET THIS VARIABLES IF USING QUERY CSV OUTPUT
-if(!RGCAM){ 
+if(!RGCAM){
   QUERY_FILE <- "output/queryout-emisstracer.csv"
 }
 
@@ -27,7 +34,7 @@ if(RGCAM){
   
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
   
-  QUERY_RESULTS_LOCATION <- 'output/NDC_continued_ambition.dat'
+  QUERY_RESULTS_LOCATION <- 'output/debug_prj.dat' #temporary
 }
 
 # The packages below are needed for the calculations
@@ -42,7 +49,7 @@ library(readr)
 
 setwd(FOLDER_LOCATION)
 
-source("functions.R")
+source("functions/emissions_tracer.R")
 
 ###################  Getting Query Output ###################
 if(RGCAM){
@@ -59,12 +66,12 @@ if(RGCAM){
         prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), scenario,
                                   paste0(FOLDER_LOCATION, 'queries.xml'))
       }
-      
+
     } else {
       prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), SCENARIO_NAME,
                                 paste0(FOLDER_LOCATION, 'queries.xml'))
     }
-    
+
     print("Database queried.")
   }
   setwd(FOLDER_LOCATION)
@@ -75,14 +82,27 @@ if(!RGCAM){
   print("Query file processed.")
 
 }
+
+if (DEBUG == TRUE){
+  prj <- dropQueries(prj,'CO2 prices')
+  
+  prj <- dropScenarios(prj,c(DEBUG_SCENARIO), invert=TRUE)
+
+  prj[[DEBUG_SCENARIO]] <- prj[[DEBUG_SCENARIO]] %>%
+    lapply(dplyr::filter, region == DEBUG_REGION, year == DEBUG_YEAR)
+}
+
+
 ###################  Fuel Tracing ###################
-fuel_tracing <- fuel_distributor(prj)
+
+fuel_tracing <- energy_water_distributor(prj)
 
 ###################  CO2 Sequestration ###################
 # Mapping from subsector to primary/direct
-primary_map <- read_csv("input/sequestration_primary_map.csv")
+primary_map <- read_csv("input/sequestration_primary_map.csv") #%>%
+#  filter(subsector != 'natural gas')
 
-sequestration <- co2_sequestration_distributor(prj, fuel_tracing, primary_map, WIDE_FORMAT)
+sequestration <- co2_sequestration_distributor(prj, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), primary_map, WIDE_FORMAT)
 
 ###################  Emission Inputs ###################
 #
@@ -93,10 +113,10 @@ nonCO2 <- rgcam::getQuery(prj, "nonCO2 emissions by subsector")
 resource_nonCO2 <- rgcam::getQuery(prj, "nonCO2 emissions by resource production") %>%
   rename(sector = resource, subsector = subresource)
 
-CO2 <- rgcam::getQuery(prj, "CO2 emissions by sector (no bio)") %>%
-  rename(sector = `primary fuel`)
+CO2 <- rgcam::getQuery(prj, "CO2 emissions by sector (no bio)") #%>%
+  #rename(sector = `primary fuel`)
 
-input <- rgcam::getQuery(prj, "inputs by subsector") %>%
+input <- rgcam::getQuery(prj, "inputs by tech") %>%
   group_by(Units, scenario, region, sector, input, year) %>%
   summarise(value = sum(value)) %>%
   ungroup()
@@ -118,7 +138,7 @@ land_aggregation <- readr::read_csv("input/aggregated_land.csv")
 ###################  Emission Calculation ###################
 
 
-all_emissions <- emissions(CO2, nonCO2, LUC, fuel_tracing, GWP, sector_label, land_aggregation, WIDE_FORMAT)
+all_emissions <- emissions(CO2, nonCO2, LUC, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), GWP, sector_label, land_aggregation, WIDE_FORMAT)
 all_emissions <- bind_rows(all_emissions,sequestration)
 
 readr::write_csv(all_emissions, EMISSIONS_OUTPUT)
@@ -131,3 +151,21 @@ cat(paste("------------------------------------------",
           "FILE COMPLETED.",
           "------------------------------------------", sep="\n"))
 
+
+################## Abatement Costs #####################
+library("gcamdata")
+#source("functions/abatement_cost_calculator.R")
+
+#all_emissions_cost <- all_emissions %>%
+#  pivot_longer('2005':'2100',names_to='year') %>%
+#  mutate(year = as.double(year))
+
+#abatement_cost <- abatement_cost_calculator(prj,all_emissions_cost,count_upstream_emiss = TRUE)
+
+#abatement_cost <- abatement_cost_calculator(prj,all_emissions,count_upstream_emiss = FALSE)
+
+
+
+######### Full Upstream Energy Water #########
+
+#energy_water_tracing <- energy_water_distributor(prj)
