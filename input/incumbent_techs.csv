@@ -1,0 +1,22 @@
+sector,subsector,incumbent_tech
+iron and steel,BLASTFUR,BLASTFUR
+trn_shipping_intl,International Ship,Liquids
+process heat cement,coal,coal
+trn_freight_road,Heavy truck,Liquids
+trn_freight_road,Medium truck,Liquids
+trn_freight_road,Light truck,Liquids
+trn_freight,Freight Rail,Liquids
+trn_freight,Domestic Ship,Liquids
+N fertilizer,gas,gas
+trn_pass_road_LDV_4W,Car,Liquids
+trn_pass_road_LDV_4W,Large Car and Truck,Liquids
+resid_heating,gas,gas
+construction energy use,mobile,refined liquids
+agricultural energy use,mobile,refined liquids
+mining energy use,mobile,refined liquids
+trn_aviation_intl,International Aviation,Liquids
+trn_pass,Domestic Aviation,Liquids
+construction energy use,stationary,refined liquids
+agricultural energy use,stationary,refined liquids
+mining energy use,stationary,refined liquids
+CO2 removal,dac,no DAC

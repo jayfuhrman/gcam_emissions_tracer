@@ -1,0 +1,14 @@
+primary,mapped
+coal,c coal
+crude oil,a oil
+geothermal,i geothermal
+global solar resource,h solar
+natural gas,b natural gas
+offshore wind resource,g wind
+onshore wind resource,g wind
+total biomass,d biomass
+traditional biomass,d biomass
+distributed_solar,h solar
+hydro,f hydro
+nuclearFuelGenIII,e nuclear
+nuclearFuelGenII,e nuclear
