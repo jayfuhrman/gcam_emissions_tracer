@@ -1,6 +1,6 @@
 subsector,primary
 cement,limestone
-dac,CO2 removal
+dac,dac
 refined liquids,refining
 biomass (conv CCS),biomass
 biomass (IGCC CCS),biomass
@@ -19,3 +19,7 @@ EAF with DRI,iron and steel
 EAF with scrap,iron and steel
 crude oil,crude oil
 natural gas,natural gas
+biochar,biochar
+rock weathering,rock weathering
+direct ocean capture,dac
+gas CCS,dac

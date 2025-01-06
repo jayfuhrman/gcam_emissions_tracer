@@ -82,7 +82,7 @@ Passenger Rail,enduse,Passenger Rail
 Pork,enduse,Pork
 Poultry,enduse,Poultry
 process heat cement,enduse,cement
-process heat dac,enduse,ces
+process heat dac,enduse,direct air capture
 refining,transformation,refining
 resid cooling,enduse,resid cooling
 resid heating,enduse,resid heating
@@ -137,7 +137,6 @@ Truck (4.5-12t),enduse,Truck (4.5-12t)
 Large Car and SUV,enduse,Large Car and SUV
 Light Truck and SUV,enduse,Light Truck and SUV
 construction feedstocks,enduse,construction feedstocks
-ces,enduse,ces
 Fruits,enduse,Fruits
 Legumes,enduse,Legumes
 NutsSeeds,enduse,NutsSeeds
@@ -146,3 +145,10 @@ Soybean,enduse,Soybean
 Vegetables,enduse,Vegetables
 refined liquids enduse,enduse,refined liquids enduse
 refined liquids industrial,enduse,refined liquids industrial
+ammonia,enduse,ammonia
+process heat paper,enduse,paper
+waste biomass for paper,enduse,paper
+biochar,enduse,biochar
+process heat cement CCS,enduse,cement
+dac,enduse,direct air capture
+rock weathering,enduse,rock weathering

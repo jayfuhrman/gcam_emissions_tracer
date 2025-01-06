@@ -41,3 +41,9 @@ Vegetables,crops
 FruitsTree,crops
 NutsSeedsTree,crops
 Fruits,crops
+Hardwood,forest
+ProtectedUnmanagedHardwood,forest
+UnmanagedHardwood,forest
+Softwood,forest
+ProtectedUnmanagedSoftwood,forest
+UnmanagedSoftwood,forest
