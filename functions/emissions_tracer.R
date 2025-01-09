@@ -1805,7 +1805,7 @@ final_fuel_CO2_disag <- function(all_emissions){
   point_source_industrial_CO2_refining_no_bio <- 
     point_source_industrial_CO2 %>%
     #deal with this separately, add back in later
-    filter(!enduse %in% c('unconventional oil production', "ces", "dac", "rock weathering", "biochar"))%>%
+    filter(!enduse %in% c('unconventional oil production', "ces", "direct air capture", "rock weathering", "biochar"))%>%
            
     left_join(point_source_ind_CO2_no_refining,by = c('scenario','region','year','enduse')) %>%
     mutate(tot_emiss_no_refining = if_else(is.na(tot_emiss_no_refining),0,tot_emiss_no_refining),
@@ -1817,7 +1817,7 @@ final_fuel_CO2_disag <- function(all_emissions){
   # 5.5 get the unconventional oil dac 
   unconventional_oil_dac <- 
     point_source_industrial_CO2 %>%
-    filter(enduse %in% c('unconventional oil production', "ces", "dac", "rock weathering", "biochar"))
+    filter(enduse %in% c('unconventional oil production', "ces", "direct air capture", "rock weathering", "biochar"))
   
   # 5.6. Filter to get emissions from gas processing and refining (refining -- for non transport sector)
   upstream_industrial_CO2 <- 
@@ -2195,15 +2195,15 @@ direct_aggregation <- function(all_emissions){
   # the units.csv file is updated to include units for SO2_2, SO2_2_AWB, SO2_3, SO2_3_AWB, SO2_4, SO2_4_AWB, PM2.5, PM10, they all have unit of Tg.
   Units <- read_csv('input/Units.csv')
   
-  # all_emissions <- all_emissions3
+  # all_emissions <- all_emissions4
   
   all_emissions %>%
-  # all_emission_test <- all_emissions3 %>%  
+  # all_emission_test <- all_emissions4 %>%  
     mutate(direct = if_else(direct %in% non_energy & Units == 'MTCO2e','Non-energy',direct)) %>%
     mutate(direct = if_else(direct == 'refined liquids','crude oil',direct)) %>%
     mutate(direct = if_else(direct == 'traditional biomass','biomass',direct)) %>%
     mutate(direct = if_else(direct == 'unconventional oil','crude oil',direct)) %>%
-    mutate(direct = if_else(direct %in%c('dac', "biochar", "rock weathering"),'CO2 removal',direct)) %>%
+    mutate(direct = if_else(direct %in%c('direct air capture', "biochar", "rock weathering"),'CO2 removal',direct)) %>%
     mutate(direct = if_else(direct %in% food_agriculture,'Food and agriculture',direct)) %>%
     mutate(direct = if_else(ghg == 'LUC CO2','LULUCF',direct)) %>%
     mutate(direct = if_else(ghg == 'CO2' & direct %in% c('coal','crude oil','natural gas') & value < 0,'biomass CCS',direct)) %>%
@@ -2227,7 +2227,8 @@ direct_aggregation <- function(all_emissions){
            direct = if_else(direct == 'gas','natural gas',direct),
            direct = if_else(direct == 'biomass CCS' & str_detect(enduse,'feedstocks') & phase == 'enduse','biomass',direct),
            phase = if_else(direct == "biomass CCS" & str_detect(enduse,'feedstocks'), "enduse", phase),
-           transformation = if_else(elec_for_H2 == TRUE,'H2 production and distribution',transformation),
+           elec_for_H2 = if_else(direct == "hydrogen" & transformation == "electricity", FALSE, elec_for_H2),
+           transformation = if_else(elec_for_H2 == TRUE, 'H2 production and distribution', transformation),
            direct = if_else(elec_for_H2 == TRUE & !(direct %in% c('coal','crude oil','natural gas','biomass','biomass CCS','natural gas','Non-energy')),'electricity',direct),
            elec_for_H2 = if_else(is.na(elec_for_H2),FALSE,elec_for_H2),
            direct = if_else(direct == "CO2 removal" & transformation == "refining", "e-fuel production", direct)) %>% 
@@ -2826,7 +2827,8 @@ emissions <- function(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
       
       
       initial_disag %>%
-        left_join(final_disag %>% mutate(enduse = if_else(enduse == 'direct air capture','ces',enduse)), by = c('scenario','region','year','enduse','ghg','Units')) %>%
+        left_join(final_disag %>% mutate(enduse = if_else(enduse == 'direct air capture','ces',enduse)), 
+                  by = c('scenario','region','year','enduse','ghg','Units')) %>%
         mutate(match = if_else(final_disag == initial_disag, TRUE,FALSE),
                diff = abs(final_disag - initial_disag)) %>%
         arrange(desc(diff)) %>%
