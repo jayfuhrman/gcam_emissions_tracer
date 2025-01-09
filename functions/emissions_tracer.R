@@ -2754,10 +2754,10 @@ emissions <- function(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
   all_emissions1 <- final_fuel_CO2_disag(all_emissions)
   
   # the following code will need to be removed once the historical negative biomass CCS issue is resolved
-  all_emissions2 <- all_emissions1 %>% 
-    filter(direct == "biomass CCS", year <= 2015) %>% 
-    mutate(value = 0) %>% 
-    rbind(all_emissions1 %>% filter(direct != "biomass CCS" | year > 2015))
+  all_emissions2 <- all_emissions1 #%>% 
+    #filter(direct == "biomass CCS", year <= 2015) %>% 
+    #mutate(value = 0) %>% 
+    #rbind(all_emissions1 %>% filter(direct != "biomass CCS" | year > 2015))
   
   all_emissions3 <- final_fuel_nonCO2_disag(all_emissions2) 
   
