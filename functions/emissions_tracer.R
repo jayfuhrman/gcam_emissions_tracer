@@ -1713,10 +1713,11 @@ final_fuel_CO2_disag <- function(all_emissions){
   c_containing_ind_fuels <- c('delivered biomass', 'delivered coal', 'delivered gas',
                               'regional natural gas', 'unconventional oil', 'wholesale gas', 'traditional biomass',
                               'refined liquids industrial', 'refined liquids enduse', 'limestone', 'district heat',
-                              'process heat cement', 'process heat dac', 'airCO2','process heat paper','waste biomass for paper')
+                              'process heat cement', 'process heat dac', 'airCO2')
   
   transform_ind <- c('district heat','process heat dac')
   
+  #correct for biomass gasification, which would slightly lower the emissions intensity of gas
   gas_c_inputs <- 
     rgcam::getQuery(prj, "inputs by tech") %>%
     filter(sector %in% c('gas processing'),
@@ -1747,14 +1748,13 @@ final_fuel_CO2_disag <- function(all_emissions){
   
   point_source_ind_en_inputs <- 
     rgcam::getQuery(prj, "inputs by tech") %>%
-    filter(sector %in% c(point_source_industrial_CO2$enduse,'process heat cement','process heat paper'),
+    filter(sector %in% c(point_source_industrial_CO2$enduse,'process heat cement'),
            !(sector %in% c(transform_ind)),
-           !(input %in% c(transform_ind,'process heat paper','process heat cement')),
+           !(input %in% c(transform_ind)),
            input %in% c_containing_ind_fuels) %>%
     mutate(input = if_else(input == 'unconventional oil','crude oil',input),
            input = if_else(input == 'traditional biomass','biomass',input),
-           sector = if_else(sector == 'process heat cement','cement',sector),
-           sector = if_else(sector == 'process heat paper','paper',sector))
+           sector = if_else(sector == 'process heat cement','cement',sector))
   
   point_source_ind_C_input <- 
     point_source_ind_en_inputs %>%
@@ -1776,10 +1776,11 @@ final_fuel_CO2_disag <- function(all_emissions){
     left_join(gas_c_emiss_intensity,by = c('scenario','region','year','fuel')) %>%
     mutate(value = value * PrimaryFuelCO2Coef / 14.2)
   
+  
   point_source_ind_C_input <- bind_rows(point_source_ind_C_input_corrected_gas,
                                         point_source_ind_C_input_no_gas)
   
-  point_source_ind_CO2_emiss_norm <- 
+  point_source_ind_CO2_emiss <- 
     point_source_ind_C_input %>%
     rename(enduse = sector) %>%
     left_join(industrial_cseq_by_fuel, by = c('scenario','region','year','enduse','subsector','technology','fuel','Units')) %>%
@@ -1790,52 +1791,33 @@ final_fuel_CO2_disag <- function(all_emissions){
            ghg = 'CO2',
            fuel = if_else(fuel == 'biomass','biomass CCS',fuel),
            fuel = if_else(subsector == "direct ocean capture", "dac", fuel)) %>%
-    filter(enduse != 'unconventional oil production',
+    filter(value != 0,
+           fuel != 'refining', #filter out for now as we will assume the difference between other sectoral emissions and point source CO2 from tracer will be refining, crude oil if positive, biomass CCS if negative
+           enduse != 'unconventional oil production',
            fuel != 'dac') %>%
     rename(direct = fuel) %>%
-    select(scenario,region,year,direct,transformation,enduse,value,ghg,Units) %>%
-    group_by(scenario,region,year,transformation,enduse,ghg,Units) %>%
-    mutate(frac = value / sum(value),
-           frac = if_else(is.na(frac),1,frac)) %>%
-    ungroup() 
+    select(scenario,region,year,direct,transformation,enduse,value,ghg,Units) 
   
+  point_source_ind_CO2_no_refining <- 
+    point_source_ind_CO2_emiss %>%
+    group_by(scenario,region,year,enduse) %>%
+    summarize(tot_emiss_no_refining = sum(value)) %>%
+    ungroup()
   
-  point_source_industrial_CO2_disag <- point_source_industrial_CO2 %>%
-    select(-direct) %>%
-    left_join(point_source_ind_CO2_emiss_norm %>% select(-value), by = c('scenario','region','year','enduse','transformation','ghg','Units')) %>%
-    mutate(value = value * frac,
-           direct = if_else(direct == 'refining' & value >= 0,'crude oil',   #Assign positive emissions associated with refined liquids use at point sources to crude oil
-                            if_else(direct == 'refining' & value < 0, 'biomass CCS',direct))) %>% # On the other hand, assume any negative emissions to be carbon of biomass origin in refined liquids to which CCS is applied
-    filter(!is.na(direct))
-    
-  
-  
-  # deal with a very small amount of refined liquids enduse, in this case, which show up in point source industrial CO2 emissions.
-  # Here we distribute the emissions attribution in proportion to their consumption by end use in each region, and assign to crude oil
-  # This avoids them showing up in the direct column
-  residual <- point_source_industrial_CO2 %>%
-    filter(!(enduse %in% point_source_industrial_CO2_disag$enduse))
-  
-  inputs_norm_residual <- inputs_by_subsector %>%
-    filter(input %in% residual$enduse,
-           region %in% residual$region) %>%
-    mutate(enduse = if_else(str_detect(sector,"trn_"),subsector,sector)) %>%
-    group_by(scenario,region,year,input) %>%
-    mutate(frac = value / sum(value)) %>%
-    ungroup() %>%
-    select(scenario,region,year,enduse,transformation = input, frac)
-  
-  residual <- residual %>%
-    select(-enduse) %>%
-    left_join(inputs_norm_residual, by = c('scenario','region','year','transformation')) %>%
-    mutate(value = value * frac,
-           transformation = if_else(str_detect(transformation,'refined'),'refining',transformation),
-           direct = if_else(str_detect(direct,'refined'),'crude oil',direct)) %>%
-    select(-frac) 
-  
-  point_source_industrial_CO2_disag <- bind_rows(point_source_industrial_CO2_disag,residual) %>%
-    filter(!enduse %in% c('unconventional oil production', "ces", "direct air capture", "rock weathering", "biochar"))
-
+  point_source_industrial_CO2_refining_no_bio <- 
+    point_source_industrial_CO2 %>%
+    #deal with this separately, add back in later
+    filter(!enduse %in% c('unconventional oil production', "ces", "direct air capture", "rock weathering", "biochar"))%>%
+    left_join(point_source_ind_CO2_no_refining,by = c('scenario','region','year','enduse')) %>%
+    # To calculate point-source emissions associated with refined liquids use in industry, subtract emissions from all other non-refining sources 
+    # from the total point source emissions of the sector (point_source_industrial_CO2).  Any net-negative negative values will be assumed to be from carbon of biomass origin 
+    # in the refined products to which CCS is applied.  Conversely, any positive values are assigned to crude oil.  
+    # Note that due to the precision of the emissions no bio query, this is an approximation and may result in reporting a small amount of BECCS in historical years
+    mutate(tot_emiss_no_refining = if_else(is.na(tot_emiss_no_refining),0,tot_emiss_no_refining),
+           value = value - tot_emiss_no_refining,
+           transformation = 'refining',
+           direct = if_else(value > 0, 'crude oil','biomass CCS')) %>%
+    select(-tot_emiss_no_refining)
   
   # 5.5 get the unconventional oil dac 
   unconventional_oil_dac <- 
@@ -1859,7 +1841,8 @@ final_fuel_CO2_disag <- function(all_emissions){
   remaining_industry_disag <- 
     iron_steel_emiss_disag%>%
     bind_rows(district_heat_disag,
-              point_source_industrial_CO2_disag,
+              point_source_ind_CO2_emiss,
+              point_source_industrial_CO2_refining_no_bio,
               unconventional_oil_dac,
               upstream_industrial_CO2) %>%
     mutate(ghg = 'CO2',
