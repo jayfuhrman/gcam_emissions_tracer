@@ -2422,7 +2422,13 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
            transformation = if_else(direct == 'limestone','calcination',transformation),
            direct = if_else(direct == 'limestone','Non-energy',direct)) %>%
     left_join(cwf_mapping,by = c('enduse'))
-
+  
+  tot_seq_original <- filter(getQuery(prj, "CO2 sequestration by tech"), region != "Global" & year >= 2005)$value %>% sum(na.rm = T) * 44/12
+  tot_seq_final <- filter(seq5_comb, region != "Global")$value %>% sum(na.rm = T)
+  
+  if (round(tot_seq_original - tot_seq_final,0) != 0){
+    print("WARNING: Total sequestration from 2005 to 2100 do NOT match.")
+}
   if (WIDE_FORMAT){
     seq5_final <- seq5_comb %>%
       arrange(year) %>%
