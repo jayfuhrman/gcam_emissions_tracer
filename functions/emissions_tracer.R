@@ -2322,6 +2322,8 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
            value = value * ratio_input_in_tech) %>%
     select(-subsector, -ratio_input_in_tech, subsector = input)
   
+  tot_seq_original <- filter(getQuery(prj, "CO2 sequestration by tech"), region != "Global" & year >= 2005)$value %>% sum(na.rm = T) 
+  
   # Carbon sequestration by subsector
   seq <- getQuery(prj, "CO2 sequestration by tech") %>%
     # filter(region == "China", year == "2050") %>% # TEMPORARY
@@ -2333,10 +2335,22 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     summarise(value = sum(value)) %>%
     ungroup()
   
+  tot_seq1 <- filter(seq, region != "Global", year >= 2005)$value %>% sum(na.rm = T)
+  
+  if (round(tot_seq_original - tot_seq1,0) != 0){
+    print("WARNING: Total sequestration from 2005 to 2100 do NOT match after seq data table.")
+  }
+  
   seq2 <- seq %>% 
     filter(subsector %in% c("dac", "rock weathering", "direct ocean capture")) %>% 
     mutate(sector = subsector) %>% 
     rbind(seq %>% filter(!subsector %in% c("dac", "rock weathering", "direct ocean capture")))
+  
+  tot_seq2 <- filter(seq2, region != "Global", year >= 2005)$value %>% sum(na.rm = T)
+  
+  if (round(tot_seq_original - tot_seq2,0) != 0){
+    print("WARNING: Total sequestration from 2005 to 2100 do NOT match after seq2 data table.")
+  }
   
   seq3 <- seq2 %>%
     left_join(primary_map, by = "subsector") %>%
@@ -2360,6 +2374,12 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
              if_else(is.na(ratio_primary_in_trans), 1, ratio_primary_in_trans),
            value = value * ratio_primary_in_trans) %>%
     select(-primary_map, -ratio_primary_in_trans)
+  
+  tot_seq3 <- filter(seq3, region != "Global")$value %>% sum(na.rm = T) 
+  
+  if (round(tot_seq_original - tot_seq3,0) != 0){
+    print("WARNING: Total sequestration from 2005 to 2100 do NOT match after seq3.")
+  }
   
   # Split out enduses that are actually transformations
   seq4 <- seq3 %>%
@@ -2390,6 +2410,12 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
     summarise(value = sum(value)) %>%
     ungroup() %>%
     mutate(value = if_else(is.na(value),0,value))
+  
+  tot_seq4 <- filter(seq4, region != "Global")$value %>% sum(na.rm = T)
+  
+  if (round(tot_seq_original * 44 / 12 - tot_seq4,0) != 0){
+    print("WARNING: Total sequestration from 2005 to 2100 do NOT match after seq4.")
+  }
   
   
   # combine direct air capture and direct ocean capture as direct air capture
@@ -2423,11 +2449,10 @@ co2_sequestration_distributor <- function(prj, fuel_tracing, primary_map, WIDE_F
            direct = if_else(direct == 'limestone','Non-energy',direct)) %>%
     left_join(cwf_mapping,by = c('enduse'))
   
-  tot_seq_original <- filter(getQuery(prj, "CO2 sequestration by tech"), region != "Global" & year >= 2005)$value %>% sum(na.rm = T) * 44/12
   tot_seq_final <- filter(seq5_comb, region != "Global")$value %>% sum(na.rm = T)
   
   if (round(tot_seq_original - tot_seq_final,0) != 0){
-    print("WARNING: Total sequestration from 2005 to 2100 do NOT match.")
+    print("WARNING: Total sequestration from 2005 to 2100 do NOT match original values on final data table")
 }
   if (WIDE_FORMAT){
     seq5_final <- seq5_comb %>%
