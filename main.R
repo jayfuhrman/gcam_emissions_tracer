@@ -9,8 +9,7 @@ RGCAM <- TRUE # True if using rgcam, false if using query file
 GHG_EMISSIONS_OUTPUT <- 'output/all_ghg_emissions-GCAM_emtec.csv'
 NON_GHG_EMISSIONS_OUTPUT <- 'output/non_ghg_emissions-GCAM_emtec.csv'
 SEQUESTRATION_OUTPUT <- 'output/sequestration-GCAM_emtec.csv'
-
-# LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_emtec.csv'
+LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_emtec.csv'
 
 WIDE_FORMAT <- TRUE
 
@@ -109,7 +108,7 @@ fuel_tracing <- energy_water_distributor(prj)
 primary_map <- read_csv("input/sequestration_primary_map.csv") #%>%
 #  filter(subsector != 'natural gas')
 
-sequestration <- co2_sequestration_distributor(prj, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), primary_map, WIDE_FORMAT)
+#sequestration <- co2_sequestration_distributor(prj, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), primary_map, WIDE_FORMAT)
 
 ###################  Emission Inputs ###################
 #
@@ -169,7 +168,7 @@ non_GHG_emission <- all_emissions %>% filter(Units == "Tg")
 
 readr::write_csv(all_GHG_emission, GHG_EMISSIONS_OUTPUT)
 readr::write_csv(non_GHG_emission, NON_GHG_EMISSIONS_OUTPUT)
-readr::write_csv(sequestration, SEQUESTRATION_OUTPUT)
+#readr::write_csv(sequestration, SEQUESTRATION_OUTPUT)
 
 # sum((all_GHG_emission %>% filter(ghg == "CO2", `2015` <= 0))$`2015`)
 # sequestration %>% filter(ghg == "Captured CO2")
