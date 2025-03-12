@@ -1,25 +1,25 @@
 #local PC
-FOLDER_LOCATION <- 'C:/GCAM_CWF_Model/gcam-emissions-tracer_gcam7/'
+FOLDER_LOCATION <- 'C:/Users/zago627/Desktop/Tracertool/'
 
 #pic
 #FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/gcam_emissions_tracer/'
 
 RGCAM <- TRUE # True if using rgcam, false if using query file
 
-GHG_EMISSIONS_OUTPUT <- 'output/all_ghg_emissions-GCAM_cwf_central.csv'
-NON_GHG_EMISSIONS_OUTPUT <- 'output/non_ghg_emissions-GCAM_cwf_central.csv'
-SEQUESTRATION_OUTPUT <- 'output/sequestration-GCAM_cwf_central.csv'
+GHG_EMISSIONS_OUTPUT <- 'output/all_ghg_emissions-GCAM_emtec.csv'
+NON_GHG_EMISSIONS_OUTPUT <- 'output/non_ghg_emissions-GCAM_emtec.csv'
+SEQUESTRATION_OUTPUT <- 'output/sequestration-GCAM_emtec.csv'
 
-LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_HFTO.csv'
+# LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_emtec.csv'
 
 WIDE_FORMAT <- TRUE
 
 ##### DEBUG TOGGLES FOR A SINGLE REGION AND YEAR #####
 
 DEBUG <- TRUE
-DEBUG_SCENARIO <- 'cwf_central'
+DEBUG_SCENARIO <- 'GCAMv7p3-non_TF-T3-NZ2080'
 DEBUG_REGION <- 'USA'
-DEBUG_YEAR <- 2060
+DEBUG_YEAR <- 2050
 
 # SET THIS VARIABLES IF USING QUERY CSV OUTPUT
 if(!RGCAM){
@@ -32,11 +32,11 @@ if(RGCAM){
   
   DATABASE_FOLDER <- 'db'
   
-  DATABASE_NAME <- 'cwf_central'
+  DATABASE_NAME <- 'database_basexdb'
   
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
   
-  QUERY_RESULTS_LOCATION <- 'output/test_run_cwf_central.dat' #temporary
+  QUERY_RESULTS_LOCATION <- 'output/test_run_emtec.dat' #temporary
 }
 
 # The packages below are needed for the calculations
@@ -132,7 +132,7 @@ CO2 <-
 CO2_bio <- rgcam::getQuery(prj, "CO2 emissions by tech (excluding resource production)")
 
 resource_CO2 <- 
-  rgcam::getQuery(prj, "CO2 emissions by resource production ") %>%
+  rgcam::getQuery(prj, "CO2 emissions by resource production") %>%
   rename(sector = resource, subsector = subresource)
 
 input_raw <- rgcam::getQuery(prj, "inputs by tech") 
