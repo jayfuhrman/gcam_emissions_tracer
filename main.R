@@ -1,5 +1,5 @@
 #local PC
-FOLDER_LOCATION <- 'C:/Users/zago627/Desktop/Tracertool/'
+FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/stash/emissions-tracer/'
 
 #pic
 #FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/gcam_emissions_tracer/'
@@ -17,8 +17,8 @@ WIDE_FORMAT <- TRUE
 
 DEBUG <- TRUE
 DEBUG_SCENARIO <- 'GCAMv7p3-non_TF-T3-NZ2080'
-DEBUG_REGION <- 'USA'
-DEBUG_YEAR <- 2050
+DEBUG_REGION <- c('USA','China','EU-12','EU-15')
+DEBUG_YEAR <- c(2015,2020,2025,2030,2035,2040,2045,2050)
 
 # SET THIS VARIABLES IF USING QUERY CSV OUTPUT
 if(!RGCAM){
@@ -28,13 +28,13 @@ options(scipen = 999)
 # SET THESE VARIABLES IF USING RGCAM
 if(RGCAM){
   DATABASE_LOCATION <- FOLDER_LOCATION
-  
+
   DATABASE_FOLDER <- 'db'
-  
+
   DATABASE_NAME <- 'database_basexdb'
-  
+
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
-  
+
   QUERY_RESULTS_LOCATION <- 'output/test_run_emtec.dat' #temporary
 }
 
@@ -89,11 +89,11 @@ if(!RGCAM){
 
 if (DEBUG == TRUE){
   prj <- dropQueries(prj,'CO2 prices')
-  
+
   prj <- dropScenarios(prj,c(DEBUG_SCENARIO), invert=TRUE)
 
   prj[[DEBUG_SCENARIO]] <- prj[[DEBUG_SCENARIO]] %>%
-    lapply(dplyr::filter, region == DEBUG_REGION, year == DEBUG_YEAR)
+    lapply(dplyr::filter, region %in% DEBUG_REGION, year %in% DEBUG_YEAR)
 }
 
 
@@ -114,14 +114,14 @@ primary_map <- read_csv("input/sequestration_primary_map.csv") #%>%
 #
 # Load all inputs
 #
-nonCO2 <- 
+nonCO2 <-
   rgcam::getQuery(prj, "nonCO2 emissions by subsector (excluding resource production)")
 
-resource_nonCO2 <- 
+resource_nonCO2 <-
   rgcam::getQuery(prj, "nonCO2 emissions by resource production") %>%
   rename(sector = resource, subsector = subresource)
 
-CO2 <- 
+CO2 <-
   rgcam::getQuery(prj, "CO2 emissions by sector (no bio) (excluding resource production)")
 
 # CO2_tech <-
@@ -130,11 +130,11 @@ CO2 <-
 
 CO2_bio <- rgcam::getQuery(prj, "CO2 emissions by tech (excluding resource production)")
 
-resource_CO2 <- 
+resource_CO2 <-
   rgcam::getQuery(prj, "CO2 emissions by resource production") %>%
   rename(sector = resource, subsector = subresource)
 
-input_raw <- rgcam::getQuery(prj, "inputs by tech") 
+input_raw <- rgcam::getQuery(prj, "inputs by tech")
 
 input <- rgcam::getQuery(prj, "inputs by tech") %>%
   group_by(Units, scenario, region, sector, input, year) %>%
@@ -157,7 +157,7 @@ land_aggregation <- readr::read_csv("input/aggregated_land.csv")
 
 ###################  Emission Calculation ###################
 
-all_emissions <- emissions(CO2, CO2_bio, resource_CO2, nonCO2, LUC, 
+all_emissions <- emissions(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
                            fuel_tracing, input_raw,
                            GWP, sector_label, land_aggregation, WIDE_FORMAT)
 
