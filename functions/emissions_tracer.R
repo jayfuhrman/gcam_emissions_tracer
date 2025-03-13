@@ -2244,7 +2244,9 @@ direct_aggregation <- function(all_emissions){
            transformation = if_else(elec_for_H2 == TRUE, 'H2 production and distribution', transformation),
            direct = if_else(elec_for_H2 == TRUE & !(direct %in% c('coal','crude oil','natural gas','biomass','biomass CCS','natural gas','Non-energy')),'electricity',direct),
            elec_for_H2 = if_else(is.na(elec_for_H2),FALSE,elec_for_H2),
-           direct = if_else(direct == "CO2 removal" & transformation == "refining", "e-fuel production", direct)) %>%
+           direct = if_else(direct == "CO2 removal" & transformation == "refining", "e-fuel production", direct),
+           phase = if_else(ghg == 'CO2_resource','resource production',phase),
+           ghg = if_else(ghg == 'CO2_resource','CO2',ghg)) %>%
     group_by(scenario, region, year, direct, transformation, enduse,  ghg, phase) %>%
     summarize(value = sum(value)) %>%
     ungroup() %>%
@@ -2520,6 +2522,7 @@ emissions <- function(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
     bind_rows(trn_co2_no_bio) %>%
     mutate(ghg = "CO2") %>%
     bind_rows(resource_CO2 %>%
+                mutate(ghg = 'CO2_resource') %>%
                 group_by(Units, scenario, region, sector, ghg, year) %>%
                 summarise(value = sum(value, na.rm = TRUE)))
 

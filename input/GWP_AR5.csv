@@ -1,6 +1,7 @@
 ghg,GWP,Units,type
 CO2,3.666667,MTC,CO2
 LUC CO2,3.666667,MTC,CO2
+CO2_resource,3.666667,MTC,CO2
 CH4,28,Tg,Super Pollutant
 CH4_AGR,28,Tg,Super Pollutant
 CH4_AWB,28,Tg,Super Pollutant
