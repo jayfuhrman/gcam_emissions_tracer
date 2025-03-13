@@ -2605,6 +2605,16 @@ emissions <- function(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
     select(-type, -GWP) %>%
     # remove all the H2 emissions
     filter(!ghg %in% c('H2', "H2_AWB"))
+  
+  join_check <- ghg_co2eq %>%
+    left_join(sector_label, by = "sector") %>%
+    filter(is.na(rewrite)) %>%
+    distinct(sector)
+  
+  if (nrow(join_check) > 0) {
+    write_csv(join_check,'join_check.csv')
+    stop('ERROR: Sectors not in mapping file.  Please check join_check.csv and copy these to input/sector_label.csv')
+  }
 
 
   # Here, all the pre-process work for emission data are completed, next, we disaggregate the mission to different phases (primary, transformation, enduse)
