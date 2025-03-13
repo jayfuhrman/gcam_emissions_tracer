@@ -1960,7 +1960,8 @@ final_fuel_nonCO2_disag <- function(all_emissions_after_co2_disag) {
            fuel = if_else(fuel %in% c('mobile','stationary'),technology,fuel),
            fuel = if_else(sector %in% c('iron and steel'),technology,fuel),
            sector = if_else(sector == 'process heat cement','cement',sector),
-           sector = if_else(sector %in% c("process heat paper","waste biomass for paper"),'paper',sector)) %>%
+           sector = if_else(sector %in% c("process heat paper","waste biomass for paper"),'paper',sector),
+           sector = if_else(sector %in% c("process heat food processing"),'food processing',sector)) %>%
 
     filter(!(sector %in% c('H2 retail dispensing',"H2 central production", 'H2 retail delivery',
                            'H2 retail dispensing','H2 wholesale dispensing','elect_td_H2','H2 enduse',
