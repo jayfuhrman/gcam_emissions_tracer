@@ -1,5 +1,5 @@
 #local PC
-FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/stash/emissions-tracer/'
+FOLDER_LOCATION <- 'C:/GCAM_CWF_Model/gcam-emissions-tracer_gcam7/'
 
 #pic
 #FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/gcam_emissions_tracer/'
@@ -65,12 +65,12 @@ if(RGCAM){
     if(SCENARIO_NAME == "ALL"){
       for (scenario in rgcam::listScenariosInDB(conn)$name){
         prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), scenario,
-                                  paste0(FOLDER_LOCATION, 'queries_g7.xml'))
+                                  paste0(FOLDER_LOCATION, 'queries_g8.xml'))
       }
 
     } else {
       prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), SCENARIO_NAME,
-                                paste0(FOLDER_LOCATION, 'queries_g7.xml'))
+                                paste0(FOLDER_LOCATION, 'queries_g8.xml'))
     }
 
     print("Database queried.")
@@ -96,7 +96,9 @@ if (DEBUG == TRUE){
     lapply(dplyr::filter, region %in% DEBUG_REGION, year %in% DEBUG_YEAR)
 }
 
-
+GWP <- readr::read_csv("input/GWP_AR5.csv")
+sector_label <- readr::read_csv("input/sector_label.csv")
+land_aggregation <- readr::read_csv("input/aggregated_land.csv")
 ###################  Fuel Tracing ###################
 fuel_tracing <- energy_water_distributor(prj)
 
@@ -108,7 +110,7 @@ fuel_tracing <- energy_water_distributor(prj)
 primary_map <- read_csv("input/sequestration_primary_map.csv") #%>%
 #  filter(subsector != 'natural gas')
 
-#sequestration <- co2_sequestration_distributor(prj, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), primary_map, WIDE_FORMAT)
+sequestration <- co2_sequestration_distributor(prj, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), primary_map, WIDE_FORMAT)
 
 ###################  Emission Inputs ###################
 #
@@ -149,11 +151,7 @@ LUC <-  rgcam::getQuery(prj, "LUC emissions by LUT") %>%
   mutate(Units = "MTC", ghg = "LUC CO2") %>%
   filter(year %in% distinct(CO2, year)$year)
 
-GWP <- readr::read_csv("input/GWP_AR5.csv")
 
-sector_label <- readr::read_csv("input/sector_label.csv")
-
-land_aggregation <- readr::read_csv("input/aggregated_land.csv")
 
 ###################  Emission Calculation ###################
 
@@ -168,7 +166,7 @@ non_GHG_emission <- all_emissions %>% filter(Units == "Tg")
 
 readr::write_csv(all_GHG_emission, GHG_EMISSIONS_OUTPUT)
 readr::write_csv(non_GHG_emission, NON_GHG_EMISSIONS_OUTPUT)
-#readr::write_csv(sequestration, SEQUESTRATION_OUTPUT)
+readr::write_csv(sequestration, SEQUESTRATION_OUTPUT)
 
 # sum((all_GHG_emission %>% filter(ghg == "CO2", `2015` <= 0))$`2015`)
 # sequestration %>% filter(ghg == "Captured CO2")
