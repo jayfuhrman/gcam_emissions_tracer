@@ -460,7 +460,7 @@ energy_water_distributor <- function(prj){
   #       crude oil -> regional oil -> refining. This is simplified to crude oil -> refining. 
   in_replace_downstream_temp <- in_ratio %>%
     group_by(scenario, region, year) %>%
-    group_modify(~downstream_replacer(., primary_sectors), keep=TRUE) %>%
+    group_modify(~downstream_replacer(., primary_sectors), .keep=TRUE) %>%
     ungroup()
   
   
@@ -490,7 +490,7 @@ energy_water_distributor <- function(prj){
   # another similar example is coal -> regional coal -> different sectors that use coal. 
   in_replace_upstream <- in_replace_downstream %>%
     group_by(scenario, region, year, Units) %>%
-    group_modify(~upstream_replacer(.), keep=TRUE) %>%
+    group_modify(~upstream_replacer(.), .keep=TRUE) %>%
     ungroup() %>%
     # change all the elect related input to H2 related sectors (electricity consumption in H2 related sectors) as transformation type.
     mutate(type = if_else(str_detect(sector,'H2') & str_detect(input,'elect'),'transformation',type))
@@ -503,8 +503,8 @@ energy_water_distributor <- function(prj){
   # after this the upstream inputs and the downstream processes are directly linked. 
   in_passthru_remove <- in_replace_upstream %>%
     group_by(scenario, region, year) %>%
-    group_modify(~passthru_remove(.), keep=TRUE) %>%
-    ungroup()
+    group_modify(~passthru_remove(.), .keep=TRUE) %>%
+    ungroup() 
     
   # need to redo ratio of sector in each input
   in_passthru_remove_biomass_coal <- in_passthru_remove %>%
@@ -516,7 +516,7 @@ energy_water_distributor <- function(prj){
     filter(year >= 1990)%>%
   # Repeating fuel distribution with delivered biomass and coal
     group_by(scenario, region, year) %>%
-    group_modify(~passthru_remove(., c( "delivered biomass", "delivered coal")), keep=TRUE) %>%
+    group_modify(~passthru_remove(., c( "delivered biomass", "delivered coal")), .keep=TRUE) %>%
     ungroup()
   
   print("Delivered coal & biomass replaced")
@@ -566,7 +566,7 @@ energy_water_distributor <- function(prj){
 
   in_primary <- in_passthru_remove_ready %>%
     group_by(scenario, region, year) %>%
-    group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
+    group_modify(~transform_distributer(., transform_sectors), .keep=TRUE) %>%
     ungroup() 
   
 
@@ -581,7 +581,7 @@ energy_water_distributor <- function(prj){
     
     in_primary <- in_primary %>%
       group_by(scenario, region, year) %>%
-      group_modify(~transform_distributer(., remaining_transform_sectors), keep=TRUE) %>%
+      group_modify(~transform_distributer(., remaining_transform_sectors), .keep=TRUE) %>%
       ungroup() 
     
     remaining_transform_sectors <- in_primary %>%
@@ -855,7 +855,7 @@ fuel_distributor <- function(prj){
   # then delete downstream row
   in_replace_downstream <- in_ratio %>%
     group_by(scenario, region, year) %>%
-    group_modify(~downstream_replacer(., primary_sectors), keep=TRUE) %>%
+    group_modify(~downstream_replacer(., primary_sectors), .keep=TRUE) %>%
     ungroup()
   
   print("Downstream passthru sectors replaced")
@@ -882,7 +882,7 @@ fuel_distributor <- function(prj){
   # then delete upstream row
   in_replace_upstream <- in_replace_downstream %>%
     group_by(scenario, region, year) %>%
-    group_modify(~upstream_replacer(.), keep=TRUE) %>%
+    group_modify(~upstream_replacer(.), .keep=TRUE) %>%
     ungroup()
   
   print("Upstream passthru sectors replaced")
@@ -891,7 +891,7 @@ fuel_distributor <- function(prj){
   #
   in_passthru_remove <- in_replace_upstream %>%
     group_by(scenario, region, year) %>%
-    group_modify(~passthru_remove(.), keep=TRUE) %>%
+    group_modify(~passthru_remove(.), .keep=TRUE) %>%
     ungroup()
   
   # need to redo ratio of sector in each input
@@ -907,7 +907,7 @@ fuel_distributor <- function(prj){
   # Repeating fuel distribution with delivered biomass and coal
   in_passthru_remove <- in_passthru_remove %>%
     group_by(scenario, region, year) %>%
-    group_modify(~passthru_remove(., c( "delivered biomass", "delivered coal")), keep=TRUE) %>%
+    group_modify(~passthru_remove(., c( "delivered biomass", "delivered coal")), .keep=TRUE) %>%
     ungroup()
   
   print("Delivered coal & biomass replaced")
@@ -937,7 +937,7 @@ fuel_distributor <- function(prj){
   in_primary <- in_passthru_remove %>%
     mutate(Units = 'EJ') %>%
     group_by(scenario, region, year) %>%
-    group_modify(~transform_distributer(., transform_sectors), keep=TRUE) %>%
+    group_modify(~transform_distributer(., transform_sectors), .keep=TRUE) %>%
     ungroup() 
   
   print("Transformation sectors removed as inputs to other transformations")
@@ -2254,7 +2254,7 @@ lifecycle_CO2_emiss_phase_disag <- function(data_input){
   emiss_fracs_by_lifecycle_phase <- upstream_c_input %>%
     left_join(downstream_c_output, by = c('scenario','region','sector','year')) %>%
     group_by(scenario,region,sector,year) %>%
-    summarize(downstream_emiss_frac = c_output / sum(upstream_c_input)) %>%
+    reframe(downstream_emiss_frac = c_output / sum(upstream_c_input)) %>%
     ungroup() %>%
     distinct(scenario,region,sector,year,downstream_emiss_frac) %>%
     mutate(upstream_emiss_frac = 1-downstream_emiss_frac) %>%
