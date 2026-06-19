@@ -377,12 +377,14 @@ energy_water_distributor <- function(prj){
   # Enduse sectors have inputs, but don't act as inputs (LH2 is only a sector, but it look like it is not a input to anyother sector.)
   enduse_sectors <- dplyr::setdiff(sectors$sector, unique(c(sectors$input, "LH2"))) 
   
+  # Note that the name "transformation sectors is somewhat non-intuitive.  These should be energy carriers (e.g., refined liquids enduse) actually used by the enduses, 
+  # not necessarily the sectors that actually produce these energy carriers.  For example, elect_td_ind is a "transformation sector, while "electricity" or "elec_coal" is not
+  # This is needed to avoid NAs in the passthru_remove function. 
   
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
                               "elect_td_bld", "elect_td_ind", "elect_td_trn",
                               "elect_td_H2",
                               "H2 retail delivery","H2 retail dispensing","H2 industrial","H2 wholesale dispensing","H2 enduse",
-                              "H2 wholesale delivery", "H2 MHDV", "LH2", "H2 LDV",
                               "refined liquids enduse", "refined liquids industrial",
                               "wholesale gas", 
                               # traditional biomass is not a transformation sector, need to check -- YQ
@@ -558,8 +560,11 @@ energy_water_distributor <- function(prj){
   print("Remaining passthru sectors replaced")
   
   
+  # As in the "transformation_sectors" list defined above, note that the name "transformation sectors is somewhat non-intuitive.  These should be energy carriers (e.g., refined liquids enduse) actually used by the enduses, 
+  # not necessarily the sectors that actually produce these energy carriers.  For example, elect_td_ind is a "transformation sector, while "electricity" or "elec_coal" is not
+  # This is needed to avoid NAs in the passthru_remove function. 
+  
   transform_sectors <- c("H2 enduse","H2 retail delivery","H2 retail dispensing","H2 wholesale dispensing","H2 industrial",
-                         "H2 wholesale delivery", "H2 MHDV", "LH2", "H2 LDV",
                          "elect_td_bld", "elect_td_trn", "elect_td_ind",
                          "district heat", "refined liquids enduse", "refined liquids industrial",
                          "delivered gas","wholesale gas")
