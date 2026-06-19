@@ -223,3 +223,38 @@ resid others coal_d6,enduse,resid others
 resid others coal_d7,enduse,resid others
 resid others coal_d8,enduse,resid others
 resid others coal_d9,enduse,resid others
+resid heating_d1,enduse,resid heating
+resid heating_d10,enduse,resid heating
+resid heating_d2,enduse,resid heating
+resid heating_d3,enduse,resid heating
+resid heating_d4,enduse,resid heating
+resid heating_d5,enduse,resid heating
+resid heating_d6,enduse,resid heating
+resid heating_d7,enduse,resid heating
+resid heating_d8,enduse,resid heating
+resid heating_d9,enduse,resid heating
+resid others_d1,enduse,resid others
+resid others_d10,enduse,resid others
+resid others_d2,enduse,resid others
+resid others_d3,enduse,resid others
+resid others_d4,enduse,resid others
+resid others_d5,enduse,resid others
+resid others_d6,enduse,resid others
+resid others_d7,enduse,resid others
+resid others_d8,enduse,resid others
+resid others_d9,enduse,resid others
+bus_bev,enduse,Bus
+fret_road_ht_bev,enduse,Heavy truck
+fret_road_lt_bev,enduse,Light truck
+fret_road_mt_bev,enduse,Medium truck
+largecar_bev,enduse,Large Car and SUV
+car_bev,enduse,Car
+aviation_intl,enduse,International Aviation
+pasg_road_ldv_2_3W,enduse,2W and 3W
+pasg_road_bus,enduse,Bus
+pasg_aviation_dom,enduse,Domestic Aviation
+pasg_hsr,enduse,Passenger Rail
+pasg_rail,enduse,Passenger Rail
+fret_dom_ship,enduse,Domestic Ship
+fret_rail,enduse,Freight Rail
+shipping_intl,enduse,International Ship
