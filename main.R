@@ -1,24 +1,24 @@
 #local PC
-FOLDER_LOCATION <- 'C:/GCAM_CWF_Model/gcam-emissions-tracer_gcam7/'
+FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/stash/emissions-tracer/'
 
 #pic
 #FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/gcam_emissions_tracer/'
 
 RGCAM <- TRUE # True if using rgcam, false if using query file
 
-GHG_EMISSIONS_OUTPUT <- 'output/all_ghg_emissions-GCAM_emtec.csv'
-NON_GHG_EMISSIONS_OUTPUT <- 'output/non_ghg_emissions-GCAM_emtec.csv'
-SEQUESTRATION_OUTPUT <- 'output/sequestration-GCAM_emtec.csv'
-LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM_emtec.csv'
+GHG_EMISSIONS_OUTPUT <- 'output/all_ghg_emissions-GCAM.csv'
+NON_GHG_EMISSIONS_OUTPUT <- 'output/non_ghg_emissions-GCAM.csv'
+SEQUESTRATION_OUTPUT <- 'output/sequestration-GCAM.csv'
+LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM.csv'
 
 WIDE_FORMAT <- TRUE
 
 ##### DEBUG TOGGLES FOR A SINGLE REGION AND YEAR #####
 
-DEBUG <- TRUE
-DEBUG_SCENARIO <- 'GCAMv7p3-non_TF-T3-NZ2080'
-DEBUG_REGION <- c('USA','China','EU-12','EU-15')
-DEBUG_YEAR <- c(2015,2020,2025,2030,2035,2040,2045,2050)
+DEBUG <- FALSE
+DEBUG_SCENARIO <- 'central'
+DEBUG_REGION <- c('USA')
+DEBUG_YEAR <- c(2025)
 
 # SET THIS VARIABLES IF USING QUERY CSV OUTPUT
 if(!RGCAM){
@@ -35,7 +35,7 @@ if(RGCAM){
 
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
 
-  QUERY_RESULTS_LOCATION <- 'output/test_run_emtec.dat' #temporary
+  QUERY_RESULTS_LOCATION <- 'output/db_cwfcentral.dat' 
 }
 
 # The packages below are needed for the calculations
@@ -102,8 +102,6 @@ land_aggregation <- readr::read_csv("input/aggregated_land.csv")
 ###################  Fuel Tracing ###################
 fuel_tracing <- energy_water_distributor(prj)
 
-# fuel_tracing_all <- fuel_tracing
-# fuel_tracing <- fuel_tracing_all
 
 ###################  CO2 Sequestration ###################
 # Mapping from subsector to primary/direct
@@ -133,7 +131,7 @@ CO2 <-
 CO2_bio <- rgcam::getQuery(prj, "CO2 emissions by tech (excluding resource production)")
 
 resource_CO2 <-
-  rgcam::getQuery(prj, "CO2 emissions by resource production") %>%
+  rgcam::getQuery(prj, "CO2 emissions by resource production ") %>%
   rename(sector = resource, subsector = subresource)
 
 input_raw <- rgcam::getQuery(prj, "inputs by tech")
@@ -181,7 +179,7 @@ cat(paste("------------------------------------------",
 
 
 ################## Abatement Costs #####################
-library("gcamdata")
+#library("gcamdata")
 #source("functions/abatement_cost_calculator.R")
 
 #all_emissions_cost <- all_emissions %>%
