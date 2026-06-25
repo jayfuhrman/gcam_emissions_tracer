@@ -35,7 +35,7 @@ if(RGCAM){
 
   SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
 
-  QUERY_RESULTS_LOCATION <- 'output/db_cwfcentral.dat' 
+  QUERY_RESULTS_LOCATION <- 'output/db_cwfcentral.dat'
 }
 
 # The packages below are needed for the calculations
@@ -65,12 +65,12 @@ if(RGCAM){
     if(SCENARIO_NAME == "ALL"){
       for (scenario in rgcam::listScenariosInDB(conn)$name){
         prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), scenario,
-                                  paste0(FOLDER_LOCATION, 'queries_g8.xml'))
+                                  paste0(FOLDER_LOCATION, 'queries.xml'))
       }
 
     } else {
       prj <- rgcam::addScenario(conn, paste0(FOLDER_LOCATION, QUERY_RESULTS_LOCATION), SCENARIO_NAME,
-                                paste0(FOLDER_LOCATION, 'queries_g8.xml'))
+                                paste0(FOLDER_LOCATION, 'queries.xml'))
     }
 
     print("Database queried.")
