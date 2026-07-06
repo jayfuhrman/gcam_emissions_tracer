@@ -99,3 +99,10 @@ Mini Car,Transport
 Domestic Aviation,Transport
 HSR,Transport
 food processing,Industry
+data centers,Buildings
+fret_road_lt_bev,Transport
+fret_road_mt_bev,Transport
+car_bev,Transport
+fret_road_ht_bev,Transport
+largecar_bev,Transport
+minicar_bev,Transport
