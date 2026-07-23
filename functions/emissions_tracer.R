@@ -3101,7 +3101,8 @@ land_change_tracker <- function(prj, land_aggregation, wide = TRUE){
     #               landleaf = sub("biomass_grass","biomassgrass",landleaf),
     #               landleaf = sub("biomass_tree","biomasstree",landleaf)) %>%
     # extract land type and location
-    dplyr::mutate(landtype = stringr::str_split_fixed(landleaf, "_", 4)[,1],
+    dplyr::mutate(landleaf = if_else(str_detect(landleaf,"Forest"),str_remove(landleaf,"_"),landleaf),
+                  landtype = stringr::str_split_fixed(landleaf, "_", 4)[,1],
                   location = stringr::str_split_fixed(landleaf, "_", 4)[,2]) %>%
     # Sum over different water and efficiency types
     dplyr::group_by(scenario, region, landtype, location, year, Units) %>%

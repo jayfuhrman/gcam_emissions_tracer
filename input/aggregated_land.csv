@@ -47,3 +47,9 @@ UnmanagedHardwood,forest
 Softwood,forest
 ProtectedUnmanagedSoftwood,forest
 UnmanagedSoftwood,forest
+HardwoodForest,forest
+ProtectedUnmanagedHardwoodForest,forest
+UnmanagedHardwoodForest,forest
+SoftwoodForest,forest
+ProtectedUnmanagedSoftwoodForest,forest
+UnmanagedSoftwoodForest,forest
