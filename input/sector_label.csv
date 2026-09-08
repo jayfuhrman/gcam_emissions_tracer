@@ -21,7 +21,10 @@ crude oil,primary,crude oil
 csp_backup,transformation,electricity
 Dairy,enduse,Dairy
 delivered biomass,eliminate,delivered biomass
+delivered biomass industry,eliminate,delivered biomass industry
 delivered gas,eliminate,delivered gas
+delivered gas transport,eliminate,delivered gas transport
+delivered gas h2,eliminate,delivered gas h2
 district heat,transformation,district heat
 Domestic Aviation,enduse,Domestic Aviation
 Domestic Ship,enduse,Domestic Ship
@@ -97,6 +100,7 @@ UnmanagedLand,enduse,UnmanagedLand
 urban processes,enduse,urban processes
 Wheat,enduse,Wheat
 wholesale gas,eliminate,wholesale gas
+wholesale gas feedstock,eliminate,wholesale gas feedstock
 Compact Car,enduse,Compact Car
 Motorcycle (50-250cc),enduse,Motorcycle (50-250cc)
 Multipurpose Vehicle,enduse,Multipurpose Vehicle
@@ -145,6 +149,9 @@ Soybean,enduse,Soybean
 Vegetables,enduse,Vegetables
 refined liquids enduse,enduse,refined liquids enduse
 refined liquids industrial,enduse,refined liquids industrial
+refined liquids transport,enduse,refined liquids transport
+refined liquids feedstocks,enduse,refined liquids feedstocks
+refined liquids bunkers,enduse,refined liquids bunkers
 ammonia,enduse,ammonia
 process heat paper,enduse,paper
 waste biomass for paper,enduse,paper
@@ -250,11 +257,20 @@ fret_road_mt_bev,enduse,Medium truck
 largecar_bev,enduse,Large Car and SUV
 car_bev,enduse,Car
 aviation_intl,enduse,International Aviation
+trn_aviation_intl_pass,enduse,International Aviation
 pasg_road_ldv_2_3W,enduse,2W and 3W
+trn_pasg_road_ldv_2_3W_pass,enduse,2W and 3W
 pasg_road_bus,enduse,Bus
+trn_pasg_road_bus_pass,enduse,Bus
 pasg_aviation_dom,enduse,Domestic Aviation
 pasg_hsr,enduse,Passenger Rail
 pasg_rail,enduse,Passenger Rail
 fret_dom_ship,enduse,Domestic Ship
+trn_dom_ship_pass,enduse,Domestic Ship
 fret_rail,enduse,Freight Rail
+trn_fret_rail_pass,enduse,Freight Rail
 shipping_intl,enduse,International Ship
+trn_ship_intl_pass,enduse,International Ship
+delivered coal,eliminate,delivered coal
+delivered coal industry,eliminate,delivered coal industry
+delivered coal feedstocks,eliminate,delivered coal feedstocks

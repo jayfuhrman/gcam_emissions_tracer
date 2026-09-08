@@ -2,6 +2,7 @@ PrimaryFuelCO2Coef.name,PrimaryFuelCO2Coef,fuel
 biomass,0,biomass
 regional biomass,23,biomass
 delivered biomass,23,biomass
+delivered biomass industry,23,biomass
 regional biomassOil,19.6,biomass
 regional sugar for ethanol,19.6,biomass
 regional corn for ethanol,19.6,biomass
@@ -13,13 +14,19 @@ regional natural gas,14.2,natural gas
 gas processing,14.2,natural gas
 gas pipeline,14.2,natural gas
 wholesale gas,14.2,natural gas
+wholesale gas feedstock,14.2,natural gas
 delivered gas,14.2,natural gas
+delivered gas transport,14.2,natural gas
+delivered gas h2,14.2,natural gas
 crude oil,19.6,crude oil
 traded unconventional oil,19.6,crude oil
 regional oil,19.6,crude oil
 refining,19.6,
 refined liquids industrial,19.6,refining
 refined liquids enduse,19.6,refining
+refined liquids transport,19.6,refining
+refined liquids bunkers,19.6,refining
+refined liquids feedstocks,19.6,refining
 limestone,0.08,limestone
 airCO2,-1,CO2 removal
 unconventional oil upscaling,1.5,

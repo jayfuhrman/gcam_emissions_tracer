@@ -299,50 +299,50 @@ energy_water_distributor <- function(prj){
   
   ###### H2 electricity breakout ###### 
   
-  # create separate sector name for electricity used for producing and distributing H2
-   # elec_H2_prod_dist <- input %>%
-   #   filter(str_detect(sector,'H2') & str_detect(input,'elect_td_'))
-   # 
-   # elect_td_inputs <- input %>%
-   #   filter(str_detect(input,'elect_td_')) %>%
-   #   group_by(scenario,region,year,input) %>%
-   #   summarize(value = sum(value)) %>%
-   #   ungroup()
-   # 
-   # elect_td_sectors <- input %>%
-   #   filter(str_detect(sector,'elect_td_')) %>%
-   #   group_by(scenario,region,year,sector) %>%
-   #   summarize(value = sum(value)) %>%
-   #   ungroup()
-   # 
-   # elect_td_loss_ratios_for_scaleup <- elect_td_inputs %>%
-   #   left_join(elect_td_sectors,by = c('scenario','region','year','input' = 'sector')) %>%
-   #   mutate(ratio = value.y / value.x)
-   # 
-   # elec_net_own_use_H2 <- elec_H2_prod_dist %>%
-   #   left_join(elect_td_loss_ratios_for_scaleup, by = c('scenario','region','year','input')) %>%
-   #   mutate(value = value * ratio,
-   #          input = 'electricity_net_ownuse',
-   #          sector = 'elect_td_H2',
-   #          subsector = 'elect_td_H2') %>%
-   #   select(-value.x,-value.y,-ratio)
-   # 
-   # elec_H2_prod_dist <- elec_H2_prod_dist %>%
-   #   mutate(input = 'elect_td_H2')
-   # 
-   # #create dataframe to subtract out H2 related electricity from corresponding sectors
-   # subtract_H2_elec <- input %>%
-   #   filter(str_detect(sector,'H2') & str_detect(input,'elect_td')) %>%
-   #   mutate(value = -value)
-   # 
-   # input <- input %>%
-   #   bind_rows(elec_net_own_use_H2,elec_H2_prod_dist,subtract_H2_elec) %>%
-   #   group_by(scenario,region,year,sector,subsector,input,Units) %>%
-   #   summarize(value = sum(value)) %>%
-   #   ungroup() %>%
-   #   filter(value != 0)
-   # 
-   # print("Electricity demand for hydrogen production and distribution broken out")
+  #create separate sector name for electricity used for producing and distributing H2
+  elec_H2_prod_dist <- input %>%
+    filter(str_detect(sector,'_h2|_H2|_en') & str_detect(input,'elect_td_'))
+
+  elect_td_inputs <- input %>%
+    filter(str_detect(input,'elect_td_')) %>%
+    group_by(scenario,region,year,input) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
+
+  elect_td_sectors <- input %>%
+    filter(str_detect(sector,'elect_td_')) %>%
+    group_by(scenario,region,year,sector) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
+
+  elect_td_loss_ratios_for_scaleup <- elect_td_inputs %>%
+    left_join(elect_td_sectors,by = c('scenario','region','year','input' = 'sector')) %>%
+    mutate(ratio = value.y / value.x)
+
+  elec_net_own_use_H2 <- elec_H2_prod_dist %>%
+    left_join(elect_td_loss_ratios_for_scaleup, by = c('scenario','region','year','input')) %>%
+    mutate(value = value * ratio,
+           input = 'electricity_net_ownuse',
+           sector = 'elect_td_H2',
+           subsector = 'elect_td_H2') %>%
+    select(-value.x,-value.y,-ratio)
+
+  elec_H2_prod_dist <- elec_H2_prod_dist %>%
+    mutate(input = 'elect_td_H2')
+
+  #create dataframe to subtract out H2 related electricity from corresponding sectors
+  subtract_H2_elec <- input %>%
+    filter(str_detect(sector,'_h2|_H2|_en') & str_detect(input,'elect_td')) %>%
+    mutate(value = -value)
+
+  input <- input %>%
+    bind_rows(elec_net_own_use_H2,elec_H2_prod_dist,subtract_H2_elec) %>%
+    group_by(scenario,region,year,sector,subsector,input,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>%
+    filter(value != 0)
+
+  print("Electricity demand for hydrogen production and distribution broken out")
 
 
   # let's only track energy for now
@@ -375,20 +375,21 @@ energy_water_distributor <- function(prj){
                               "seawater","biophysical water consumption", primary_water$input))
   
   # Enduse sectors have inputs, but don't act as inputs (LH2 is only a sector, but it look like it is not a input to anyother sector.)
-  enduse_sectors <- dplyr::setdiff(sectors$sector, unique(c(sectors$input, "LH2"))) 
+  enduse_sectors <- dplyr::setdiff(sectors$sector, unique(c(sectors$input))) 
   
   # Note that the name "transformation sectors is somewhat non-intuitive.  These should be energy carriers (e.g., refined liquids enduse) actually used by the enduses, 
   # not necessarily the sectors that actually produce these energy carriers.  For example, elect_td_ind is a "transformation sector, while "electricity" or "elec_coal" is not
   # This is needed to avoid NAs in the passthru_remove function. 
   
-  transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
+  transformation_sectors <- c("delivered biomass", "delivered coal", "delivered coal industry","delivered coal feedstocks",
+                              "delivered gas","delivered gas transport","delivered gas h2",
                               "elect_td_bld", "elect_td_ind", "elect_td_trn",
-                              "elect_td_H2",
+                              "elect_td_H2","elect_td_en",
                               "H2 retail delivery","H2 retail dispensing","H2 industrial","H2 wholesale dispensing","H2 enduse",
-                              "refined liquids enduse", "refined liquids industrial",
-                              "wholesale gas", 
+                              "refined liquids enduse", "refined liquids industrial","refined liquids transport","refined liquids bunkers","refined liquids feedstocks",
+                              "wholesale gas","wholesale gas feedstocks",
                               # traditional biomass is not a transformation sector, need to check -- YQ
-                              #"traditional biomass", 
+                              "traditional biomass", 
                               "district heat")
   
   # All other sectors are pass-thru sectors
@@ -436,7 +437,6 @@ energy_water_distributor <- function(prj){
   
   # Get ratio of sector in each input (percentage of each input type used in different sectors)
   in_ratio <- global_inputs %>%
-    
     #filter out exported fossil fuels as these will ultimately be counted in the destination countries regional fuel markets
     filter(!(sector %in% c('traded natural gas','traded coal','traded oil','traded biomass'))) %>% 
     
@@ -453,6 +453,18 @@ energy_water_distributor <- function(prj){
     summarize(value = sum(value),
               ratio = sum(ratio)) %>%
     ungroup()
+  
+  tmp1 <- in_ratio %>%
+    group_by(scenario,region,input,year,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>% filter(input %in% c("coal", "natural gas", "crude oil", "traditional biomass", 
+                                      "total biomass", "traded unconventional oil",
+                                      "global solar resource","distributed_solar",
+                                      "onshore wind resource","offshore wind resource",
+                                      "geothermal",'hydro',
+                                      "nuclearFuelGenIII","nuclearFuelGenII",
+                                      "seawater","biophysical water consumption"))
+    
 
   # If ratio = 1 and input is not a primary input, 
   # replace sectors with input name with downstream sector name and type,
@@ -481,7 +493,26 @@ energy_water_distributor <- function(prj){
     # Remove nans - these sectors no longer matter
     na.omit()
   
+  tmp2 <- in_replace_downstream %>%
+    group_by(scenario,region,input,year,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>% filter(input %in% c("coal", "natural gas", "crude oil", "traditional biomass", 
+                                      "total biomass", "traded unconventional oil",
+                                      "global solar resource","distributed_solar",
+                                      "onshore wind resource","offshore wind resource",
+                                      "geothermal",'hydro',
+                                      "nuclearFuelGenIII","nuclearFuelGenII",
+                                      "seawater","biophysical water consumption"))
+  
   print("Downstream passthru sectors replaced")
+  
+  sumcheck1 <- left_join(tmp1,tmp2, by = c("scenario","region","year","input","Units")) %>%
+    mutate(diff = value.x - value.y) %>%
+    filter(diff >= 1e-6)
+  
+  if (nrow(sumcheck1) > 0){
+    print("Sumcheck mismatch introduced replacing downstream passthru sectors")
+  }
 
   
   # If both ratios = 1
@@ -497,7 +528,27 @@ energy_water_distributor <- function(prj){
     # change all the elect related input to H2 related sectors (electricity consumption in H2 related sectors) as transformation type.
     mutate(type = if_else(str_detect(sector,'H2') & str_detect(input,'elect'),'transformation',type))
   
+  tmp3 <- in_replace_upstream %>% 
+    group_by(scenario,region,input,year,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>% filter(input %in% c("coal", "natural gas", "crude oil", "traditional biomass", 
+                                      "total biomass", "traded unconventional oil",
+                                      "global solar resource","distributed_solar",
+                                      "onshore wind resource","offshore wind resource",
+                                      "geothermal",'hydro',
+                                      "nuclearFuelGenIII","nuclearFuelGenII",
+                                      "seawater","biophysical water consumption"))
+  
+  
   print("Upstream passthru sectors replaced")
+  
+  sumcheck2 <- left_join(tmp2,tmp3, by = c("scenario","region","year","input","Units")) %>%
+    mutate(diff = value.x - value.y) %>%
+    filter(diff >= 1e-6)
+  
+  if (nrow(sumcheck2) > 0){
+    print("Sumcheck mismatch introduced replacing upstream passthru sectors")
+  }
   
   # For each pass thru sector left, need to use ratios to apportion to transformation sectors
   # This part is basically get rid of the passthru sectors, and link the upsteam and downstream of the passthru sector.
@@ -518,7 +569,7 @@ energy_water_distributor <- function(prj){
     filter(year >= 1990)%>%
   # Repeating fuel distribution with delivered biomass and coal
     group_by(scenario, region, year) %>%
-    group_modify(~passthru_remove(., c( "delivered biomass", "delivered coal")), .keep=TRUE) %>%
+    group_modify(~passthru_remove(., c( "delivered biomass", "delivered coal","delivered coal industry","delivered coal feedstocks","delivered biomass industry")), .keep=TRUE) %>%
     ungroup()
   
   print("Delivered coal & biomass replaced")
@@ -557,7 +608,26 @@ energy_water_distributor <- function(prj){
      mutate(elec_for_H2 = if_else(str_detect(sector,'H2') & str_detect(input,'elect_td_') | input == 'elect_td_H2' | sector == 'elect_td_H2',TRUE,FALSE))
    
     
-  print("Remaining passthru sectors replaced")
+   tmp4 <-  in_passthru_remove_ready %>%
+     group_by(scenario,region,input,year,Units) %>%
+     summarize(value = sum(value)) %>%
+     ungroup() %>% filter(input %in% c("coal", "natural gas", "crude oil", "traditional biomass", 
+                                       "total biomass", "traded unconventional oil",
+                                       "global solar resource","distributed_solar",
+                                       "onshore wind resource","offshore wind resource",
+                                       "geothermal",'hydro',
+                                       "nuclearFuelGenIII","nuclearFuelGenII",
+                                       "seawater","biophysical water consumption"))
+   
+   print("Remaining passthru sectors replaced")
+   
+   sumcheck3 <- left_join(tmp3,tmp4, by = c("scenario","region","year","input","Units")) %>%
+     mutate(diff = value.x - value.y) %>%
+     filter(diff >= 1e-6)
+   
+   if (nrow(sumcheck3) > 0){
+     print("Sumcheck mismatch introduced replacing remaining passthru sectors")
+   }
   
   
   # As in the "transformation_sectors" list defined above, note that the name "transformation sectors is somewhat non-intuitive.  These should be energy carriers (e.g., refined liquids enduse) actually used by the enduses, 
@@ -565,9 +635,9 @@ energy_water_distributor <- function(prj){
   # This is needed to avoid NAs in the passthru_remove function. 
   
   transform_sectors <- c("H2 enduse","H2 retail delivery","H2 retail dispensing","H2 wholesale dispensing","H2 industrial",
-                         "elect_td_bld", "elect_td_trn", "elect_td_ind",
-                         "district heat", "refined liquids enduse", "refined liquids industrial",
-                         "delivered gas","wholesale gas")
+                         "elect_td_bld", "elect_td_trn", "elect_td_ind","elect_td_h2","elect_td_en",
+                         "district heat", "refined liquids enduse", "refined liquids industrial","refined liquids transport","refined liquids bunkers","refined liquids feedstocks",
+                         "delivered gas","delivered gas h2","delivered gas transport","wholesale gas","wholesale gas feedstocks")
 
   in_primary <- in_passthru_remove_ready %>%
     group_by(scenario, region, year) %>%
@@ -609,19 +679,42 @@ energy_water_distributor <- function(prj){
     summarize(value = sum(value)) %>%
     ungroup() 
   
-  # H2_inputs <- in_passthru_remove %>%
-  #   filter(str_detect(sector,'H2'),
-  #          input %in% in_primary$input,
-  #          !(input %in% in_passthru_remove$sector))
-  # 
-  # #if inputs found that are not directly used for H2 production, they must be from electricity that is then used to produce H2
-  # in_primary <- in_primary %>%
-  #   mutate(elec_for_H2 = if_else(str_detect(sector,'H2') & !(input %in% H2_inputs$input),TRUE, elec_for_H2))
-  
+  H2_inputs <- in_passthru_remove %>%
+    filter(str_detect(sector,'H2'),
+           input %in% in_primary$input,
+           !(input %in% in_passthru_remove$sector))
 
+  #if inputs found that are not directly used for H2 production, they must be from electricity that is then used to produce H2
+  in_primary <- in_primary %>%
+    mutate(elec_for_H2 = if_else(str_detect(sector,'H2') & !(input %in% H2_inputs$input),TRUE, elec_for_H2))
+
+  
   print("Transformation sectors removed as inputs to other transformations")
+  
+  
   if (count > 0){
     print(paste0(count,' additional iterations required to remove all transformation to transformation inputs'))
+  }
+  
+  
+  tmp5 <- in_primary %>%
+    group_by(scenario,region,input,year,Units) %>%
+    summarize(value = sum(value)) %>%
+    ungroup() %>% filter(input %in% c("coal", "natural gas", "crude oil", "traditional biomass", 
+                                      "total biomass", "traded unconventional oil",
+                                      "global solar resource","distributed_solar",
+                                      "onshore wind resource","offshore wind resource",
+                                      "geothermal",'hydro',
+                                      "nuclearFuelGenIII","nuclearFuelGenII",
+                                      "seawater","biophysical water consumption"))  
+  
+  sumcheck4 <- left_join(tmp4,tmp5, by = c("scenario","region","year","input","Units")) %>%
+    mutate(diff = value.x - value.y) %>%
+    filter(diff >= 1e-6)
+  
+  
+  if (nrow(sumcheck4) > 0){
+    print("Sumcheck mismatch introduced at Transformation sectors removed as inputs to other transformations")
   }
   
   # Now need to separate transformation from enduse
@@ -691,14 +784,14 @@ energy_water_distributor <- function(prj){
     summarise(value = sum(value)) %>%
     ungroup()
   
-  # final_df <- final_df %>%
-  #   # Get ratio of enduse in primary
-  #   group_by(scenario, region, year, primary, Units) %>%
-  #   mutate(ratio_enduse_in_primary = value / sum(value)) %>%
-  #   # Get ratio of enduse in transformation 
-  #   group_by(scenario, region, year, transformation, Units) %>%
-  #   mutate(ratio_enduse_in_transformation = value / sum(value)) %>%
-  #   ungroup() 
+  final_df <- final_df %>%
+    # Get ratio of enduse in primary
+    group_by(scenario, region, year, primary, Units) %>%
+    mutate(ratio_enduse_in_primary = value / sum(value)) %>%
+    # Get ratio of enduse in transformation
+    group_by(scenario, region, year, transformation, Units) %>%
+    mutate(ratio_enduse_in_transformation = value / sum(value)) %>%
+    ungroup()
   
   print("Final distributions calculated.")
   
@@ -776,11 +869,12 @@ fuel_distributor <- function(prj){
   # Enduse sectors have inputs, but don't act as inputs
   enduse_sectors <- dplyr::setdiff(sectors$sector, sectors$input)
   
-  transformation_sectors <- c("delivered biomass", "delivered coal", "delivered gas",
-                              "elect_td_bld", "elect_td_ind", "elect_td_trn",
+  transformation_sectors <- c("delivered biomass", "delivered coal", "delivered coal industry","delivered coal feedstocks",
+                              "delivered gas","delivered gas transport","delivered gas h2",
+                              "elect_td_bld", "elect_td_ind", "elect_td_trn","elect_td_h2","elect_td_en",
                               "H2 retail delivery","H2 retail dispensing","H2 industrial","H2 wholesale dispensing","H2 enduse",
-                              "refined liquids enduse", "refined liquids industrial",
-                              "wholesale gas", "traditional biomass", "district heat")
+                              "refined liquids enduse", "refined liquids industrial","refined liquids transport","refined liquids bunkers","refined liquids feedstocks",
+                              "wholesale gas", "wholesale gas feedstocks","traditional biomass", "district heat")
   
   # All other sectors are pass-thru sectors
   passthru_sectors <- dplyr::setdiff(sectors$sector, 
@@ -935,9 +1029,9 @@ fuel_distributor <- function(prj){
   # ASSUME ELECTRICITY UPSTREAM OF HYDROGEN
   
   transform_sectors <- c("H2 enduse","H2 retail delivery","H2 retail dispensing","H2 wholesale dispensing","H2 industrial",
-                         "elect_td_bld", "elect_td_ind", "elect_td_trn",
-                         "district heat", "refined liquids enduse", "refined liquids industrial",
-                         "delivered gas","wholesale gas")
+                         "elect_td_bld", "elect_td_ind", "elect_td_trn","elect_td_h2","elect_td_en",
+                         "district heat", "refined liquids enduse", "refined liquids industrial","refined liquids transport","refined liquids bunkers","refined liquids feedstocks",
+                         "delivered gas","delivered gas h2","delivered gas transport","wholesale gas","wholesale gas feedstocks")
   
   in_primary <- in_passthru_remove %>%
     mutate(Units = 'EJ') %>%
@@ -1361,12 +1455,12 @@ final_fuel_CO2_disag <- function(all_emissions){
   trn_inputs_by_subsector <- 
     inputs_by_subsector %>% 
     filter(subsector %in% transport_sectors,
-           input %in% c('refined liquids enduse','delivered gas','refined liquids industrial')) %>%
+           input %in% c('refined liquids enduse','delivered gas','refined liquids industrial','refined liquids transport','refined liquids bunkers')) %>%
     rename(enduse = subsector,
            PrimaryFuelCO2Coef.name = input) %>%
     left_join(ccoef_mapping, by = c('PrimaryFuelCO2Coef.name')) %>%
-    mutate(transformation = if_else((PrimaryFuelCO2Coef.name == 'refined liquids enduse' | PrimaryFuelCO2Coef.name == 'refined liquids industrial'),'refining',
-                                    if_else(PrimaryFuelCO2Coef.name == 'delivered gas','gas processing',NA_character_)),
+    mutate(transformation = if_else(str_detect(PrimaryFuelCO2Coef.name,'refined liquids'),'refining',
+                                    if_else(str_detect(PrimaryFuelCO2Coef.name,'delivered gas'),'gas processing',NA_character_)),
            tailpipe_emiss = value * PrimaryFuelCO2Coef) %>%
     group_by(scenario,region,enduse,year) %>%
     mutate(frac_tailpipe_emiss = tailpipe_emiss / sum(tailpipe_emiss),
@@ -1814,8 +1908,8 @@ final_fuel_CO2_disag <- function(all_emissions){
   # 5.4.2 deal with gas processing 
   
   c_containing_ind_fuels <- c('delivered biomass', 'delivered coal', 'delivered gas',
-                              'regional natural gas', 'unconventional oil', 'wholesale gas', 'traditional biomass',
-                              'refined liquids industrial', 'refined liquids enduse', 'limestone', 'district heat',
+                              'regional natural gas', 'unconventional oil', 'wholesale gas', 'wholesale gas feedstocks','traditional biomass',
+                              'refined liquids industrial', 'refined liquids enduse', 'refined liquids feedstocks', 'limestone', 'district heat',
                               'process heat cement', 'process heat dac', 'airCO2')
   
   transform_ind <- c('district heat','process heat dac')
