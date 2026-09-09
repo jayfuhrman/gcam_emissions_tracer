@@ -384,7 +384,7 @@ energy_water_distributor <- function(prj){
   transformation_sectors <- c("delivered biomass", "delivered coal", "delivered coal industry","delivered coal feedstocks",
                               "delivered gas","delivered gas transport","delivered gas h2",
                               "elect_td_bld", "elect_td_ind", "elect_td_trn",
-                              "elect_td_H2","elect_td_en",
+                              "elect_td_H2","elect_td_en","electricity_net_ownuse",
                               "H2 retail delivery","H2 retail dispensing","H2 industrial","H2 wholesale dispensing","H2 enduse",
                               "refined liquids enduse", "refined liquids industrial","refined liquids transport","refined liquids bunkers","refined liquids feedstocks",
                               "wholesale gas","wholesale gas feedstocks",
@@ -635,7 +635,7 @@ energy_water_distributor <- function(prj){
   # This is needed to avoid NAs in the passthru_remove function. 
   
   transform_sectors <- c("H2 enduse","H2 retail delivery","H2 retail dispensing","H2 wholesale dispensing","H2 industrial",
-                         "elect_td_bld", "elect_td_trn", "elect_td_ind","elect_td_h2","elect_td_en",
+                         "elect_td_bld", "elect_td_trn", "elect_td_ind","elect_td_h2","elect_td_en","electricity_net_ownuse",
                          "district heat", "refined liquids enduse", "refined liquids industrial","refined liquids transport","refined liquids bunkers","refined liquids feedstocks",
                          "delivered gas","delivered gas h2","delivered gas transport","wholesale gas","wholesale gas feedstocks")
 
