@@ -454,16 +454,17 @@ energy_water_distributor <- function(prj){
               ratio = sum(ratio)) %>%
     ungroup()
   
-  tmp1 <- in_ratio %>%
-    group_by(scenario,region,input,year,Units) %>%
-    summarize(value = sum(value)) %>%
-    ungroup() %>% filter(input %in% c("coal", "natural gas", "crude oil", "traditional biomass", 
-                                      "total biomass", "traded unconventional oil",
-                                      "global solar resource","distributed_solar",
-                                      "onshore wind resource","offshore wind resource",
-                                      "geothermal",'hydro',
-                                      "nuclearFuelGenIII","nuclearFuelGenII",
-                                      "seawater","biophysical water consumption"))
+  
+  ### FOR LATER SUMCHECKING
+  original_totals <- in_ratio %>%
+    filter(year >= 1990) %>%
+    filter(input %in% c("coal", "natural gas", "crude oil", "regional biomass", "traded unconventional oil",
+                        "global solar resource","distributed_solar","geothermal","onshore wind resource",
+                        "offshore wind resource","biophysical water consumption", "traditional biomass")) %>%
+    group_by(scenario, region, year, input) %>%
+    summarise(value = sum(value)) %>%
+    ungroup() %>%
+    mutate(input = if_else(input == "regional biomass", "total biomass", input))
     
 
   # If ratio = 1 and input is not a primary input, 
@@ -506,9 +507,9 @@ energy_water_distributor <- function(prj){
   
   print("Downstream passthru sectors replaced")
   
-  sumcheck1 <- left_join(tmp1,tmp2, by = c("scenario","region","year","input","Units")) %>%
+  sumcheck1 <- left_join(original_totals,tmp2, by = c("scenario","region","year","input")) %>%
     mutate(diff = value.x - value.y) %>%
-    filter(diff >= 1e-6)
+    filter(abs(diff) >= 1e-6)
   
   if (nrow(sumcheck1) > 0){
     print("Sumcheck mismatch introduced replacing downstream passthru sectors")
@@ -542,9 +543,9 @@ energy_water_distributor <- function(prj){
   
   print("Upstream passthru sectors replaced")
   
-  sumcheck2 <- left_join(tmp2,tmp3, by = c("scenario","region","year","input","Units")) %>%
+  sumcheck2 <- left_join(original_totals,tmp3, by = c("scenario","region","year","input")) %>%
     mutate(diff = value.x - value.y) %>%
-    filter(diff >= 1e-6)
+    filter(abs(diff) >= 1e-6)
   
   if (nrow(sumcheck2) > 0){
     print("Sumcheck mismatch introduced replacing upstream passthru sectors")
@@ -621,9 +622,9 @@ energy_water_distributor <- function(prj){
    
    print("Remaining passthru sectors replaced")
    
-   sumcheck3 <- left_join(tmp3,tmp4, by = c("scenario","region","year","input","Units")) %>%
+   sumcheck3 <- left_join(original_totals,tmp4, by = c("scenario","region","year","input")) %>%
      mutate(diff = value.x - value.y) %>%
-     filter(diff >= 1e-6)
+     filter(abs(diff) >= 1e-6)
    
    if (nrow(sumcheck3) > 0){
      print("Sumcheck mismatch introduced replacing remaining passthru sectors")
@@ -708,9 +709,9 @@ energy_water_distributor <- function(prj){
                                       "nuclearFuelGenIII","nuclearFuelGenII",
                                       "seawater","biophysical water consumption"))  
   
-  sumcheck4 <- left_join(tmp4,tmp5, by = c("scenario","region","year","input","Units")) %>%
+  sumcheck4 <- left_join(original_totals,tmp5, by = c("scenario","region","year","input")) %>%
     mutate(diff = value.x - value.y) %>%
-    filter(diff >= 1e-6)
+    filter(abs(diff) >= 1e-6)
   
   
   if (nrow(sumcheck4) > 0){
@@ -727,14 +728,16 @@ energy_water_distributor <- function(prj){
     filter(type == "enduse") %>%
     rename(enduse = sector) %>% 
     group_by(scenario, region, input, year, Units) %>%
-    mutate(ratio_enduse_in_input = value / sum(value)) %>%
+    mutate(ratio_enduse_in_input = value / sum(value),
+           sum_ratio_enduse_in_input = sum(ratio_enduse_in_input)) %>%
     ungroup() %>%
     select(-elec_for_H2)
   
   # Get ratio of input in each transformation sector
   transform_df <- transform_df %>% 
     group_by(scenario, region, sector, year, Units,elec_for_H2) %>%
-    mutate(ratio_primary_in_trans = value / sum(value)) %>%
+    mutate(ratio_primary_in_trans = value / sum(value),
+           sum_ratio_primary_in_trans = sum(ratio_primary_in_trans)) %>%
     ungroup() %>%
     rename(transformation = sector, primary = input) %>%
     select(-type)
@@ -796,15 +799,6 @@ energy_water_distributor <- function(prj){
   
   ###################  Checking Totals  ###################  
   # NOW NEED TO DO A CHECK TO MAKE SURE MATH ADDS UP FOR EACH FUEL/REGION
-  original_totals <- in_ratio %>%
-    filter(year >= 1990) %>%
-    filter(input %in% c("coal", "natural gas", "crude oil", "regional biomass", "traded unconventional oil",
-                        "global solar resource","distributed_solar","geothermal","onshore wind resource",
-                        "offshore wind resource","biophysical water consumption", "traditional biomass")) %>%
-    group_by(scenario, region, year, input) %>%
-    summarise(value = sum(value)) %>%
-    ungroup() %>%
-    mutate(input = if_else(input == "regional biomass", "total biomass", input))
   
   new_totals <- final_df %>%
     filter(primary %in% c("coal", "natural gas", "crude oil", "total biomass", "traded unconventional oil",
