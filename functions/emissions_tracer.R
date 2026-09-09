@@ -768,18 +768,17 @@ energy_water_distributor <- function(prj){
   final_df <- final_df_all %>%
     left_join(resid_ene_mapping, by = c("transformation" = "sector")) %>%
     mutate(transformation = if_else(is.na(rewrite), transformation, rewrite), 
-           transformation = if_else(transformation %in% c("elect_td_bld", "elect_td_ind","elect_td_trn"),
+           transformation = if_else(str_detect(transformation,"elect_td"),
                                     "electricity", transformation),
-           transformation = if_else(transformation %in% c("refined liquids enduse", "refined liquids industrial"),
+           transformation = if_else(str_detect(transformation,"refined liquids "),
                                     "refining", transformation),
-           transformation = if_else(transformation %in% c("delivered gas", "wholesale gas"),
+           transformation = if_else(str_detect(transformation,"delivered gas|wholesale gas"),
                                     "gas processing", transformation),
            primary = if_else(str_detect(primary,'_water consumption'),'water consumption', primary),
            primary = if_else(str_detect(primary,'_water withdrawals'),'water withdrawals', primary),
            enduse = if_else(is.na(rewrite), enduse, rewrite), 
            Units = if_else(primary %in% c('water consumption','water withdrawals','biophysical water consumption','seawater'),'km^3','EJ'),
            elec_for_H2 = if_else(is.na(elec_for_H2),FALSE,elec_for_H2)) %>%
-    
     group_by(scenario, region, year, primary, transformation, enduse, Units,elec_for_H2) %>%
     summarise(value = sum(value)) %>%
     ungroup()
