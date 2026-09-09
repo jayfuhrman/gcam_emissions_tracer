@@ -9,12 +9,13 @@ regional corn for ethanol,19.6,biomass
 coal,27.3,coal
 regional coal,27.3,coal
 delivered coal,27.3,coal
+delivered coal industry,27.3,coal
 natural gas,14.2,natural gas
 regional natural gas,14.2,natural gas
 gas processing,14.2,natural gas
 gas pipeline,14.2,natural gas
 wholesale gas,14.2,natural gas
-wholesale gas feedstock,14.2,natural gas
+wholesale gas feedstocks,14.2,natural gas
 delivered gas,14.2,natural gas
 delivered gas transport,14.2,natural gas
 delivered gas h2,14.2,natural gas

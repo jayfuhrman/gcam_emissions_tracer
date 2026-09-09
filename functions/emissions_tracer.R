@@ -1562,8 +1562,8 @@ final_fuel_CO2_disag <- function(all_emissions){
   #write_csv(trn_tailpipe_CO2_disag,'trn_tailpipe_CO2_disag.csv')
   # check trn tailpipe emission remain the same
   if (round(sum(trn_CO2$value) - sum(trn_tailpipe_CO2_disag$value), 0) != 0){
-    print("Electricity CO2 emission disaggregation: Total emissions from 1990 to 2100 do NOT match.")
-    print("percent difference between raw GCAM output data and initial disaggregation pass emissions is:")
+    print("Transport CO2 emission disaggregation: Total emissions from 1990 to 2100 do NOT match.")
+    print("percent difference between raw GCAM output data and transport disaggregation pass emissions is:")
     print(100*(sum(trn_CO2$value - sum(trn_tailpipe_CO2_disag$value))/sum(trn_CO2$value)))
   }
   
@@ -1667,8 +1667,8 @@ final_fuel_CO2_disag <- function(all_emissions){
   
   # check h2 emission remain the same
   if (round(sum(H2_CO2_emiss$value) - sum(H2_CO2_emiss_disag$value), 0) != 0){
-    print("Electricity CO2 emission disaggregation: Total emissions from 1990 to 2100 do NOT match.")
-    print("percent difference between raw GCAM output data and initial disaggregation pass emissions is:")
+    print("H2 CO2 emission disaggregation: Total emissions from 1990 to 2100 do NOT match.")
+    print("percent difference between raw GCAM output data and H2 disaggregation pass emissions is:")
     print(100*(sum(H2_CO2_emiss$value - sum(H2_CO2_emiss_disag$value))/sum(H2_CO2_emiss$value)))
   }
   
@@ -1900,7 +1900,7 @@ final_fuel_CO2_disag <- function(all_emissions){
   
   # 5.4.2 deal with gas processing 
   
-  c_containing_ind_fuels <- c('delivered biomass', 'delivered coal', 'delivered gas',
+  c_containing_ind_fuels <- c('delivered biomass', 'delivered coal', 'delivered gas','delivered coal industry','delivered biomass industry',
                               'regional natural gas', 'unconventional oil', 'wholesale gas', 'wholesale gas feedstocks','traditional biomass',
                               'refined liquids industrial', 'refined liquids enduse', 'refined liquids feedstocks', 'limestone', 'district heat',
                               'process heat cement', 'process heat dac', 'airCO2')
@@ -2312,7 +2312,7 @@ lifecycle_CO2_emiss_phase_disag <- function(data_input){
     left_join(ccoef_mapping,by = c('PrimaryFuelCO2Coef.name')) %>%
     mutate(c_input = value * PrimaryFuelCO2Coef) %>%
     select(-Units) %>%
-    filter(!(PrimaryFuelCO2Coef.name %in% c('elect_td_ind','H2 industrial', "global solar resource", "onshore wind resource"))) -> upstream_inputs_by_subsector
+    filter(!(PrimaryFuelCO2Coef.name %in% c('elect_td_en','elect_td_ind','H2 industrial', "global solar resource", "onshore wind resource"))) -> upstream_inputs_by_subsector
   
   
   CO2_sequestration_by_tech %>%
@@ -3092,13 +3092,6 @@ emissions <- function(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
   # calculated_emissions_rus <- filter(all_emissions_rus, region != "Global")$value %>% sum(na.rm = T)
   
 
-  # sum((all_emissions%>%filter(year >= 2005))$value, na.rm = TRUE)
-  # sum((all_emissions1%>%filter(year >= 2005))$value, na.rm = TRUE)
-  # sum((all_emissions2%>%filter(year >= 2005))$value, na.rm = TRUE)
-  # sum((all_emissions3%>%filter(year >= 2005))$value, na.rm = TRUE)
-  # sum((all_emissions4%>%filter(year >= 2005))$value, na.rm = TRUE)
-
-  
   # Combine all emissions and add global region
   all_emissions_global <- all_emissions_region %>%
     group_by(scenario, year, direct, transformation, enduse, ghg, Units, phase, CWF_Sector) %>%
@@ -3119,6 +3112,12 @@ emissions <- function(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
     print("Total emissions from 1990 to 2100 do NOT match.")
     print("percent difference between raw GCAM output data and fully disaggregated emissions is:")
     print(100*(original_emissions - calculated_emissions)/original_emissions)
+    
+    print(paste0('Initial Disaggregation Sum: ',sum((all_emissions%>%filter(year >= 2005))$value, na.rm = TRUE)))
+    print(paste0('Final Fuel CO2 Disaggregation Sum: ',sum((all_emissions1%>%filter(year >= 2005))$value, na.rm = TRUE)))
+    print(paste0('Final Fuel nonCO2 Disaggregation Sum: ',sum((all_emissions2%>%filter(year >= 2005))$value, na.rm = TRUE)))
+    print(paste0('Lifecycle phase Disaggregation Sum: ',sum((all_emissions3%>%filter(year >= 2005))$value, na.rm = TRUE)))
+    print(paste0('Final Sum: ',sum((all_emissions4%>%filter(year >= 2005))$value, na.rm = TRUE)))
     
     print("Writing inputs by tech csv for debugging... ")
     
