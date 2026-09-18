@@ -1,55 +1,4 @@
-#local PC
-FOLDER_LOCATION <- 'C:/Users/fuhr472/Documents/stash/emissions-tracer/'
-
-#pic
-#FOLDER_LOCATION <- '/qfs/people/fuhr472/wrk/gcam_emissions_tracer/'
-
-RGCAM <- TRUE # True if using rgcam, false if using query file
-
-GHG_EMISSIONS_OUTPUT <- 'output/all_ghg_emissions-GCAM.csv'
-NON_GHG_EMISSIONS_OUTPUT <- 'output/non_ghg_emissions-GCAM.csv'
-SEQUESTRATION_OUTPUT <- 'output/sequestration-GCAM.csv'
-LANDUSE_CHANGE_OUTPUT <- 'output/landuse_change-GCAM.csv'
-
-WIDE_FORMAT <- TRUE
-
-##### DEBUG TOGGLES FOR A SINGLE REGION AND YEAR #####
-
-DEBUG <- FALSE
-DEBUG_SCENARIO <- 'central'
-DEBUG_REGION <- c('USA')
-DEBUG_YEAR <- c(2025)
-
-# SET THIS VARIABLES IF USING QUERY CSV OUTPUT
-if(!RGCAM){
-  QUERY_FILE <- "output/queryout-emisstracer.csv"
-}
-options(scipen = 999)
-# SET THESE VARIABLES IF USING RGCAM
-if(RGCAM){
-  DATABASE_LOCATION <- FOLDER_LOCATION
-
-  DATABASE_FOLDER <- 'db'
-
-  DATABASE_NAME <- 'database_basexdb'
-
-  SCENARIO_NAME <- 'ALL' # Use 'ALL' to indicate query all scenarios in a db
-
-  QUERY_RESULTS_LOCATION <- 'output/db_cwfcentral.dat'
-}
-
-# The packages below are needed for the calculations
-# You can uncomment and run the following line if you need to install them:
-# install.packages(c("tibble", "dplyr", "tidyr", "stringr", "readr", "rgcam"))
-library(rgcam)
-library(dplyr)
-options(dplyr.summarise.inform = FALSE)
-library(tidyr)
-library(stringr)
-library(readr)
-
-setwd(FOLDER_LOCATION)
-
+source('config.R')
 source("functions/emissions_tracer.R")
 
 ###################  Getting Query Output ###################
@@ -108,7 +57,19 @@ fuel_tracing <- energy_water_distributor(prj)
 primary_map <- read_csv("input/sequestration_primary_map.csv") #%>%
 #  filter(subsector != 'natural gas')
 
-sequestration <- co2_sequestration_distributor(prj, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), primary_map, WIDE_FORMAT)
+transport_rewrite <- read_csv('input/transport_rewrite.csv')
+
+sequestration <- co2_sequestration_distributor(prj, fuel_tracing %>% filter(primary %in% c('crude oil','coal','natural gas','total biomass')), primary_map, WIDE_FORMAT) %>%
+  left_join(transport_rewrite, by = c('enduse' = 'sector')) %>%
+  mutate(enduse = if_else(!is.na(renamed),renamed,enduse)) %>%
+  select(-renamed) %>%
+  left_join(transport_rewrite, by = c('transformation' = 'sector')) %>%
+  mutate(transformation = if_else(!is.na(renamed),renamed,transformation)) %>%
+  select(-renamed) %>%
+  group_by(scenario,region,direct,transformation,enduse,ghg,phase,CWF_Sector,Units) %>%
+  summarize(across(where(is.numeric),\(x) sum(x, na.rm = TRUE))) %>%
+  ungroup()
+  
 
 ###################  Emission Inputs ###################
 #
@@ -155,12 +116,25 @@ LUC <-  rgcam::getQuery(prj, "LUC emissions by LUT") %>%
 
 all_emissions <- emissions(CO2, CO2_bio, resource_CO2, nonCO2, LUC,
                            fuel_tracing, input_raw,
-                           GWP, sector_label, land_aggregation, WIDE_FORMAT)
+                           GWP, sector_label, land_aggregation, WIDE_FORMAT) %>%
+  left_join(transport_rewrite, by = c('enduse' = 'sector')) %>%
+  mutate(enduse = if_else(!is.na(renamed),renamed,enduse)) %>%
+  select(-renamed) %>%
+  left_join(transport_rewrite, by = c('transformation' = 'sector')) %>%
+  mutate(transformation = if_else(!is.na(renamed),renamed,transformation)) %>%
+  select(-renamed)
 
 # all_emissions <- bind_rows(all_emissions, sequestration)
 
-all_GHG_emission <- all_emissions %>% filter(Units != "Tg")
-non_GHG_emission <- all_emissions %>% filter(Units == "Tg")
+all_GHG_emission <- all_emissions %>% filter(Units != "Tg") %>%
+  group_by(scenario,region,direct,transformation,enduse,ghg,phase,CWF_Sector,Units) %>%
+  summarize(across(where(is.numeric),\(x) sum(x, na.rm = TRUE))) %>%
+  ungroup()
+
+non_GHG_emission <- all_emissions %>% filter(Units == "Tg") %>%
+  group_by(scenario,region,direct,transformation,enduse,ghg,phase,CWF_Sector,Units) %>%
+  summarize(across(where(is.numeric),\(x) sum(x, na.rm = TRUE))) %>%
+  ungroup()
 
 readr::write_csv(all_GHG_emission, GHG_EMISSIONS_OUTPUT)
 readr::write_csv(non_GHG_emission, NON_GHG_EMISSIONS_OUTPUT)
@@ -172,6 +146,28 @@ readr::write_csv(sequestration, SEQUESTRATION_OUTPUT)
 ###################  Land Transfers ###################
 land_change <- land_change_tracker(prj, land_aggregation, WIDE_FORMAT)
 readr::write_csv(land_change, LANDUSE_CHANGE_OUTPUT)
+
+
+
+source("functions/activity_tracer.R")
+elec_capacity_new <- getElecGenCapacity(prj,NEW_VINTAGE = TRUE)
+elec_capacity_operational <- getElecGenCapacity(prj,NEW_VINTAGE = FALSE)
+fleet_size_sales <- getTrnFleetSize(prj,NEW_SALES = TRUE)
+fleet_size_stock <- getTrnFleetSize(prj,NEW_SALES = FALSE)
+
+
+ACTIVITY_OUTPUT <- paste0('output/','CurPol','Activity.csv')
+activity <- bind_rows(elec_capacity_new,
+                      elec_capacity_operational,
+                      fleet_size_sales,
+                      fleet_size_stock) %>%
+  select(scenario, region, Variable,
+         as.character(c(1990, 2005, 2010, 2015, 2021, seq(2025, 2100, by = 5))))
+
+readr::write_csv(activity,ACTIVITY_OUTPUT)
+
+
+
 
 cat(paste("------------------------------------------",
           "FILE COMPLETED.",
