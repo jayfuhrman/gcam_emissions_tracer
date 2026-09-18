@@ -20,11 +20,11 @@ Corn,enduse,Corn
 crude oil,primary,crude oil
 csp_backup,transformation,electricity
 Dairy,enduse,Dairy
-delivered biomass,eliminate,delivered biomass
-delivered biomass industry,eliminate,delivered biomass industry
-delivered gas,eliminate,delivered gas
-delivered gas transport,eliminate,delivered gas transport
-delivered gas h2,eliminate,delivered gas h2
+delivered biomass,primary,biomass
+delivered biomass industry,primary,biomass
+delivered gas,transformation,gas processing
+delivered gas transport,transformation,gas processing
+delivered gas h2,transformation,gas processing
 district heat,transformation,district heat
 Domestic Aviation,enduse,Domestic Aviation
 Domestic Ship,enduse,Domestic Ship
@@ -99,8 +99,8 @@ unconventional oil production,enduse,unconventional oil production
 UnmanagedLand,enduse,UnmanagedLand
 urban processes,enduse,urban processes
 Wheat,enduse,Wheat
-wholesale gas,eliminate,wholesale gas
-wholesale gas feedstock,eliminate,wholesale gas feedstock
+wholesale gas,transformation,gas processing
+wholesale gas feedstock,transformation,gas processing
 Compact Car,enduse,Compact Car
 Motorcycle (50-250cc),enduse,Motorcycle (50-250cc)
 Multipurpose Vehicle,enduse,Multipurpose Vehicle
@@ -147,11 +147,11 @@ NutsSeeds,enduse,NutsSeeds
 OilPalm,enduse,OilPalm
 Soybean,enduse,Soybean
 Vegetables,enduse,Vegetables
-refined liquids enduse,enduse,refined liquids enduse
-refined liquids industrial,enduse,refined liquids industrial
-refined liquids transport,enduse,refined liquids transport
-refined liquids feedstocks,enduse,refined liquids feedstocks
-refined liquids bunkers,enduse,refined liquids bunkers
+refined liquids enduse,transformation,refining
+refined liquids industrial,transformation,refining
+refined liquids transport,transformation,refining
+refined liquids feedstocks,transformation,refining
+refined liquids bunkers,transformation,refining
 ammonia,enduse,ammonia
 process heat paper,enduse,paper
 waste biomass for paper,enduse,paper
@@ -271,6 +271,6 @@ fret_rail,enduse,Freight Rail
 trn_fret_rail_pass,enduse,Freight Rail
 shipping_intl,enduse,International Ship
 trn_ship_intl_pass,enduse,International Ship
-delivered coal,eliminate,delivered coal
-delivered coal industry,eliminate,delivered coal industry
-delivered coal feedstocks,eliminate,delivered coal feedstocks
+delivered coal,primary,coal
+delivered coal industry,primary,coal
+delivered coal feedstocks,primary,coal
